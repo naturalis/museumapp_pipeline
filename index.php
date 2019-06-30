@@ -1,9 +1,9 @@
 <?php
 
-    $db["host"] = isset($_ENV["DB_HOST"]) ? $_ENV["DB_HOST"] : 'mysql';
-    $db["user"] = isset($_ENV["DB_USER"]) ? $_ENV["DB_USER"] : 'root';
-    $db["pass"] = isset($_ENV["DB_PASS"]) ? $_ENV["DB_PASS"] : 'root';
-    $db["database"] = isset($_ENV["DB_DATABASE"]) ? $_ENV["DB_DATABASE"] : 'reaper';
+    $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
+    $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
+    $db["pass"] = isset($_ENV["MYSQL_ROOT_PASSWORD"]) ? $_ENV["MYSQL_ROOT_PASSWORD"] : 'root';
+    $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : 'reaper';
 
     $imgSelectorDbPath = 
         isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : '/data/image_selector/medialib_url_chooser.db';
@@ -14,10 +14,11 @@
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
 
-    include_once("auth.php");
+    // include_once("auth.php");
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
     include_once('class.dataBrowser.php');
+    include_once('class.pipelineJobQueuer.php');
 
     $d = new PipelineData;
 
@@ -45,9 +46,25 @@
     $b->setJsonPath( "preview", $jsonPreviewPath );
     $b->setJsonPath( "publish", $jsonPublishPath );
 
+    $s = new PipelineJobQueuer;
+    $s->setPublishPath( $jsonPublishPath );
+
+    if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="refresh" && isset($_POST["source"]))
+    {
+        $s->setSource( $_POST["source"] );
+        
+        try {
+            $s->queueRefreshJob();
+            $queueMessage = [ "source" => $_POST["source"], "message" => "queued", "success" => 1 ];
+        } catch (Exception $e) {
+            $queueMessage = [ "source" => $_POST["source"], "message" => $e->getMessage(), "success" => 0  ];
+        }
+    }
+    else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="publish")
     {
         $b->publishPreviewFiles();
+        $s->queuePublishJob();
     }
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="delete")
@@ -86,8 +103,8 @@
     $imageSelections = $d->getImageSelection();
     $imageSquares = $d->getImageSquares();
 
-
     $fPreview = $b->getFileLinks( "preview" );
+    $prevQueuedJobs = $s->findEarlierJobs();
 
 ?>
 <html>
@@ -109,6 +126,13 @@
 div {
     margin-bottom: 10px;
 }
+.clickable {
+    cursor: pointer;
+}
+tr td {
+    height: 30px;
+    padding: 0 5px 0 5px;
+}
 </style>
 </head>
 <body>
@@ -116,14 +140,14 @@ div {
         <table>
 <?php
 
-    echo '<tr><td>Masterlijst:</td><td>',count($masterList),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>CRS:</td><td>',count($crs),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>IUCN:</td><td>',count($iucn),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Natuurwijzer:</td><td>',count($natuurwijzer),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Topstukken:</td><td>',count($topstukken),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>TTIK:</td><td>',count($ttik),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Afbeeldingselecties:</td><td>',count($imageSelections),'</td><td class="refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Gegenereerde vierkanten:</td><td>',count($imageSquares),'</td><td class="refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>Masterlijst:</td><td>',count($masterList),'</td><td data-source="masterList" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>CRS:</td><td>',count($crs),'</td><td data-source="CRS" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>IUCN:</td><td>',count($iucn),'</td><td data-source="IUCN" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>Natuurwijzer:</td><td>',count($natuurwijzer),'</td><td data-source="natuurwijzer" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>Topstukken:</td><td>',count($topstukken),'</td><td data-source="topstukken" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>TTIK:</td><td>',count($ttik),'</td><td data-source="ttik" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>Afbeeldingselecties:</td><td>',count($imageSelections),'</td><td></td></tr>',"\n";
+    echo '<tr><td>Gegenereerde vierkanten:</td><td>',count($imageSquares),'</td><td></td></tr>',"\n";
     echo '<tr><td colspan="3">&nbsp;</td></tr>',"\n";
     echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a href="browse.php">browse</a></td></tr>',"\n";
 ?>
@@ -156,35 +180,37 @@ div {
 
 
 </body>
+<script>
+<?php
+    if (isset($queueMessage))
+    {
+        echo 'queueMessage = { source : "'.$queueMessage["source"].'" , message : "'.$queueMessage["message"].'", success: '.$queueMessage["success"].'  };';
+    }
+    if (isset($prevQueuedJobs))
+    {
+        foreach ($prevQueuedJobs as $val)
+        {
+            echo "prevQueuedJobs.push('".$val."');\n";
+        }   
+    }
+?>
+
+$( document ).ready(function()
+{
+    $('.refresh').on('click',function()
+    {
+        queuePipelineSourceRefresh($(this).attr('data-source'));
+    })
+
+    printPreviousQueuedJobs();
+    printQueueMessage();
+
+});
+</script>
 </html>
 
 
 <?php
-
-    exit(0);
-
-    $d->makeTaxonList();
-    $d->addTaxonomyToTL();
-    $d->addObjectDataToTL();
-    $d->addCRSToTL();
-    $d->addIUCNToTL();
-
-    $d->resolveExhibitionRooms();
-
-    $d->addTTIKTextsToTL();
-    $d->addNatuurwijzerTextsToTL();
-    $d->addTopstukkenTextsToTL();
-    $d->makeLinksSelection();
-
-    $d->effectuateImageSelection();
-    // $d->addImageSquares();  // STUB
-
-
-
-    $d->generateJsonDocuments();
-
-
-
 
 
 
@@ -229,33 +255,3 @@ controleer topstuk in publish
 
 
 
-
-
-/*
-    $d->setImageSelection();    
-    $d->setImageSquares();
-*/
-
-
-
-
-
-
-/*
-
-    
-    select data
-    create documents
-    write documents(draft)
-    serve draft documents
-    reject documents
-    publish documents
-    set elastic busy
-    set documents(state=old)
-    import documents(state=published)
-    delete documents(state=old)
-    set elastic ready
-
-    toggle harvesters
-
-*/

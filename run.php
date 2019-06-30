@@ -1,9 +1,9 @@
 <?php
 
-    $db["host"] = isset($_ENV["DB_HOST"]) ? $_ENV["DB_HOST"] : 'mysql';
-    $db["user"] = isset($_ENV["DB_USER"]) ? $_ENV["DB_USER"] : 'root';
-    $db["pass"] = isset($_ENV["DB_PASS"]) ? $_ENV["DB_PASS"] : 'root';
-    $db["database"] = isset($_ENV["DB_DATABASE"]) ? $_ENV["DB_DATABASE"] : 'reaper';
+    $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
+    $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
+    $db["pass"] = isset($_ENV["MYSQL_ROOT_PASSWORD"]) ? $_ENV["MYSQL_ROOT_PASSWORD"] : 'root';
+    $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : 'reaper';
 
     $imgSelectorDbPath = 
         isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : '/data/image_selector/medialib_url_chooser.db';
@@ -55,12 +55,7 @@
     // $d->addImageSquares();  // STUB
 
 
-
     $d->generateJsonDocuments();
-
-
-
-
 
 
 /*

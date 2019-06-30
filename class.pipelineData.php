@@ -29,6 +29,11 @@
         private $softMaxTaxonArticles=3;
         private $hardMaxTotalArticles=5;
 
+        private $debug_masterListSCnames = [
+            // "Ursus maritimus",
+            // "Canis lupus"
+        ];
+
         // https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN
         private $IUCN_statusTranslations = [
             "EX" => "Uitgestorven",
@@ -85,11 +90,6 @@
             "query_param" => "?standalone"
         ];
 
-        private $debug_masterListSCnames = [
-            // "Ursus maritimus",
-            // "Canis lupus"
-        ];
-
         const TABLE_MASTER = 'tentoonstelling';
         const TABLE_CRS = 'crs';
         const TABLE_IUCN = 'iucn';
@@ -97,6 +97,7 @@
         const TABLE_TOPSTUKKEN = 'topstukken';
         const TABLE_TTIK = 'ttik';
 
+        const SYSTEM_ERROR = 3;
         const DATA_ERROR = 1;
         const DATA_MESSAGE = 2;        
 
@@ -124,6 +125,14 @@
         public function setCRS()
         {
             $this->CRS = $this->_getMySQLSource(self::TABLE_CRS);
+
+            $d=[];
+            foreach($this->CRS as $val)
+            {
+                $val["URL"]=str_replace("http://", "https://", $val["URL"]);
+                $d[]=$val;
+            }
+            $this->CRS = $d;
         }
 
         public function setIUCN()
@@ -193,6 +202,22 @@
                 $val["_nomen"]=$val["classification"][$key]["taxon"];
                 $val["_nomen_ic"]=strtolower($val["_nomen"]);
                 $val["_taxon_ic"]=strtolower($val["taxon"]);
+
+                foreach(["english","dutch"] as $language)
+                {
+                    $val[$language]=json_decode($val[$language],true);
+
+                    if (isset($val[$language]))
+                    {
+                        $pKey = array_search("isPreferredNameOf", array_column($val[$language], "nametype"));
+                        $val["_".$language."_main"]=$pKey ? $val[$language][$pKey]["name"] : $val[$language][0]["name"];
+                    }
+                    else
+                    {
+                        $val["_".$language."_main"]=null;
+                    }    
+                }
+
                 $d[]=$val;
             }
             $this->ttik = $d;
@@ -331,8 +356,8 @@
                             "authorship"=>$this->ttik[$key]["authorship"],
                             "taxon"=>$this->ttik[$key]["taxon"],
                             "rank"=>$this->ttik[$key]["rank"],
-                            "english"=>$this->ttik[$key]["english"],
-                            "dutch"=>$this->ttik[$key]["dutch"],
+                            "english"=>$this->ttik[$key]["_english_main"],
+                            "dutch"=>$this->ttik[$key]["_dutch_main"],
                             "_nomen"=>$this->ttik[$key]["_nomen"],
                             "_nomen_ic"=>$this->ttik[$key]["_nomen_ic"],
                             "_taxon_ic"=>$this->ttik[$key]["_taxon_ic"],
@@ -814,7 +839,7 @@
                 $this->_addDocumentObjects();
                 $this->_addDocumentLinks();
 
-                if (!$this->checkMinimumRequirements())
+                if (!$this->_checkMinimumRequirements())
                 {
                     $this->log(sprintf("skipping %s",$this->document["names"]["scientific"]),self::DATA_MESSAGE,"generator");
                     continue;
@@ -828,7 +853,7 @@
                 }
                 else
                 {
-                    $this->log(sprintf("could not write  %s",$filename),self::DATA_ERROR,"generator");
+                    $this->log(sprintf("could not write %s",$filename),self::DATA_ERROR,"generator");
                 }
 
                 $this->document=[];
@@ -914,12 +939,19 @@
 
         private function _getMySQLSource( $source )
         {
-            $sql = $this->db->query("select * from " . $source);
             $list=[];
-            while ($row = $sql->fetch_assoc())
-            {
-                $list[]=$row;
+
+            try {
+                $sql = $this->db->query("select * from " . $source);
+                $list=[];
+                while ($row = $sql->fetch_assoc())
+                {
+                    $list[]=$row;
+                }
+            } catch (Exception $e) {
+                $this->log(sprintf("could not read table %s",$source),self::SYSTEM_ERROR,"collector");
             }
+
             return $list;
         }
 
@@ -1154,7 +1186,7 @@
 
                     $o["data"] = [
                         [ "label" => "Registratienummer", "text" => $object["unitid"] ],
-                        [ "label" => "Locatie", "text" => $this->exhibitionRoomsTranslations[$object["exhibition_room"]]]
+                        [ "label" => "Locatie", "text" => $this->exhibitionRoomsTranslations[$object["exhibition_room"]] ]
                     ];
 
                     if (isset($this->rawDocData["topstuk"]) && $this->rawDocData["topstuk"]["_registrationNumber_ic"]==strtolower($object["unitid"]))
@@ -1164,6 +1196,14 @@
                         if (!is_null($topstuk_image))
                         {
                             $o["topstuk_link"][ "image" ] = $topstuk_image["url"];
+                        }
+                        else
+                        {
+                            unset($o["topstuk_link"]);
+
+                            $this->log(
+                                sprintf("no image for topstukken object-link: %s / %s",
+                                    $this->document["names"]["scientific"],$object["unitid"]),self::DATA_ERROR,"generator");
                         }
                     }
                     $this->document[$block_name][]=$o;
@@ -1197,26 +1237,14 @@
             }
         }
 
-        private function checkMinimumRequirements()
+        private function _checkMinimumRequirements()
         {
-
-
-
-
-            if (
-                (!isset($this->document["names"]["scientific"])) ||
-                (!isset($this->document["names"]["dutch"])) ||
-                (!isset($this->document["content"]) || count($this->document["content"])<1) ||
-                (!isset($this->document["objects"]) || count($this->document["objects"])<1) ||
-                (!isset($this->document["links"]) || count($this->document["links"])<1)
-                )
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
+            if (!isset($this->document["names"]["scientific"])) return false;
+            if (!isset($this->document["names"]["dutch"])) return false;
+            if (!isset($this->document["content"]) || count($this->document["content"])<1) return false;
+            if (!isset($this->document["objects"]) || count($this->document["objects"])<1) return false;
+            if (!isset($this->document["links"]) || count($this->document["links"])<1) return false;
+            return true;
         }
 
     }

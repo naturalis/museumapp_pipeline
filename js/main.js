@@ -18,7 +18,7 @@ function publishPreviewFiles()
     }
 }
 
-function deleterPreviewFiles()
+function deletePreviewFiles()
 {
     if (confirm("are you sure?"))
     {
@@ -52,4 +52,46 @@ function toggleCollapse()
     options.collapsed = !options.collapsed;
     $('#json-renderer').jsonViewer(json, options);    
     $('#preview .toggle').html(options.collapsed ? "expand all" : "collapse");
+}
+
+function queuePipelineSourceRefresh( source )
+{
+    if (confirm("are you sure?"))
+    {
+        $('#action').val('refresh');
+
+        var hiddenField = document.createElement("input");
+        hiddenField.setAttribute("type", "hidden");
+        hiddenField.setAttribute("name", "source");
+        hiddenField.setAttribute("value", source );
+        $('#theForm').append(hiddenField);
+
+        $('#theForm').submit();
+    }
+
+}
+
+var queueMessage;
+var prevQueuedJobs=Array();
+
+function printPreviousQueuedJobs()
+{
+    for(i=0;i<prevQueuedJobs.length;i++)
+    {
+        $('td.refresh[data-source='+prevQueuedJobs[i]+']').html("already queued").off("click").removeClass("clickable");
+    }    
+}
+
+function printQueueMessage()
+{
+    if(queueMessage)
+    {
+        $('.refresh').each(function()
+        {
+            if ($(this).attr('data-source')==queueMessage.source)
+            {
+                $(this).html(queueMessage.message).off("click").removeClass("clickable");
+            }
+        })
+    }
 }

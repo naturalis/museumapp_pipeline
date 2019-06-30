@@ -3,7 +3,7 @@
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
 
-    include_once("auth.php");
+    // include_once("auth.php");
     include_once('class.baseClass.php');
     include_once('class.dataBrowser.php');
 
@@ -93,7 +93,7 @@ div {
     </div>
     <div>
         <input type="button" value="bestanden publiceren" onclick="publishPreviewFiles();">
-        <input type="button" value="bestanden verwijderen" onclick="deleterPreviewFiles();">
+        <input type="button" value="bestanden verwijderen" onclick="deletePreviewFiles();">
     </div>
     <div>
         <a href="index.php">index</a>

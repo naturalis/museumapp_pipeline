@@ -6,6 +6,9 @@
         public $jsonPath = [ "preview" => null, "publish" => null ];
         private $messages=[];
 
+        const DATA_ERROR = 1;
+        const DATA_MESSAGE = 2;        
+
         public function setJsonPath( $state, $path )
         {
             if (array_key_exists($state, $this->jsonPath))
