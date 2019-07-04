@@ -22,6 +22,11 @@
             }
         }
 
+        public function setQueuePath( $path )
+        {
+            $this->queuePath=$path;
+        }
+
         public function setPublishPath( $path )
         {
             $this->publishPath=$path;
@@ -31,7 +36,7 @@
         {
             if (!is_null($this->source))
             {
-                if (!$this->_findEarlierJob())
+                if (!$this->_findEarlierRefreshJob())
                 {
                     $this->jobfilename = $this->queuePath . "refresh-". $this->source . "-". uniqid();
                     if (!file_put_contents($this->jobfilename,json_encode([ "action" => "refresh", "source" => $this->source ])))
@@ -65,17 +70,28 @@
                 throw new Exception("publish path not set", 1);                        
             }                    
 
+            $this->_deleteEarlierPublishJobs();
+
             $this->jobfilename = $this->queuePath . "publish-". uniqid();
+
             if (!file_put_contents($this->jobfilename,json_encode([ "action" => "publish", "source" => $this->publishPath ])))
             {
                 throw new Exception("couldn't create publishing job file", 1);                        
             }                    
         }
 
-        private function _findEarlierJob()
+        private function _findEarlierRefreshJob()
         {
             $files = glob($this->queuePath . "refresh-". $this->source . '*');
             return !empty($files);
         }
 
+        private function _deleteEarlierPublishJobs()
+        {
+            $files = glob($this->queuePath . "publish-*");
+            foreach ($files as $val)
+            {
+                unlink($val);
+            }
+        }
     }

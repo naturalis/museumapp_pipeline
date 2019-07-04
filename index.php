@@ -13,6 +13,7 @@
 
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
+    $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
     // include_once("auth.php");
     include_once('class.baseClass.php');
@@ -37,9 +38,12 @@
     $d->setNatuurwijzer();
     $d->setTopstukken();
     $d->setTTIK();
+    $d->setNBA();
     $d->setExhibitionRooms();
     $d->setImageSelection();
     $d->setImageSquares();  // STUB
+    $d->makeTaxonList();
+    $d->addTaxonomyToTL();
 
     $b = new DataBrowser;
 
@@ -47,7 +51,9 @@
     $b->setJsonPath( "publish", $jsonPublishPath );
 
     $s = new PipelineJobQueuer;
+
     $s->setPublishPath( $jsonPublishPath );
+    $s->setQueuePath( $messageQueuePath );
 
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="refresh" && isset($_POST["source"]))
     {
@@ -55,7 +61,7 @@
         
         try {
             $s->queueRefreshJob();
-            $queueMessage = [ "source" => $_POST["source"], "message" => "queued", "success" => 1 ];
+            $queueMessage = [ "source" => $_POST["source"], "message" => "refresh-job ingepland", "success" => 1 ];
         } catch (Exception $e) {
             $queueMessage = [ "source" => $_POST["source"], "message" => $e->getMessage(), "success" => 0  ];
         }
@@ -63,8 +69,14 @@
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="publish")
     {
-        $b->publishPreviewFiles();
-        $s->queuePublishJob();
+        try {
+            $b->publishPreviewFiles();
+            $s->queuePublishJob();
+            $publishMessage = [ "message" => "bestanden klaar gezet voor publiceren", "success" => 1 ];
+        } catch (Exception $e) {
+            $publishMessage = [ "message" => $e->getMessage(), "success" => 0  ];
+        }
+
     }
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="delete")
@@ -74,8 +86,6 @@
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="generate")
     {
-        $d->makeTaxonList();
-        $d->addTaxonomyToTL();
         $d->addObjectDataToTL();
         $d->addCRSToTL();
         $d->addIUCNToTL();
@@ -97,11 +107,15 @@
     $masterList = $d->getMasterList();
     $crs = $d->getCRS();
     $iucn = $d->getIUCN();
+    $nba = $d->getNBA();
     $natuurwijzer = $d->getNatuurwijzer();
     $topstukken = $d->getTopstukken();
     $ttik = $d->getTtik();
     $imageSelections = $d->getImageSelection();
     $imageSquares = $d->getImageSquares();
+    $taxonList = $d->getTaxonList();
+
+    // $ttikMatches = $d->getTaxonListTTIKMatches();
 
     $fPreview = $b->getFileLinks( "preview" );
     $prevQueuedJobs = $s->findEarlierJobs();
@@ -141,8 +155,10 @@ tr td {
 <?php
 
     echo '<tr><td>Masterlijst:</td><td>',count($masterList),'</td><td data-source="masterList" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>(taxonlijst):</td><td>',count($taxonList),'</td><td></td></tr>',"\n";
     echo '<tr><td>CRS:</td><td>',count($crs),'</td><td data-source="CRS" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>IUCN:</td><td>',count($iucn),'</td><td data-source="IUCN" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>NBA:</td><td>',count($nba),'</td><td data-source="NBA" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>Natuurwijzer:</td><td>',count($natuurwijzer),'</td><td data-source="natuurwijzer" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>Topstukken:</td><td>',count($topstukken),'</td><td data-source="topstukken" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>TTIK:</td><td>',count($ttik),'</td><td data-source="ttik" class="clickable refresh">&#128259;</td></tr>',"\n";
@@ -166,9 +182,15 @@ tr td {
         echo "<ul>";
         foreach ($messages as $val)
         {
-            echo "<li>",$val["message"]," (",$val["source"],")","<br />\n";
+            echo "<li>",$val["message"]," (",$val["source"],")","</li>\n";
         }
         echo "</ul>";
+    }
+
+    if (isset($publishMessage))
+    {
+        echo "<h3>melding tijdens publiceren:</h3>";
+        echo $publishMessage["message"],"\n";
     }
 
 ?>
@@ -207,6 +229,16 @@ $( document ).ready(function()
 
 });
 </script>
+<pre>
+<?php
+
+    // foreach ($taxonList as $val)
+    // {
+    //     echo $val["taxon"],"\n";
+    // };
+
+?>
+</pre>
 </html>
 
 
