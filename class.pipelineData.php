@@ -7,6 +7,7 @@
         private $SQLitePath = [ "selector" => null, "squares" => null ];
         private $masterList;
         private $CRS;
+        private $brahms;
         private $IUCN;
         private $NBA;
         private $natuurwijzer;
@@ -26,16 +27,18 @@
         private $document=[];
         private $documentId=1;
 
-        private $softMaxTaxonArticles=3;
-        private $hardMaxTotalArticles=5;
+        private $softMaxTaxonArticles=5;
+        private $hardMaxTotalArticles=8;
 
         private $debug_masterListSCnames = [
+            // "Abrus precatorius",
+            // "Aschiphasma annulipes Westwood, 1834",
             // "Amazilia fimbriata",
             // "Chrysolampis mosquitus",
-            // "Colibri coruscans"
+            // "Colibri coruscans",
             // "Pelophylax klepton esculentus",
             // "Pelophylax spec.",
-            // "Accipiter nisus"
+            // "Accipiter nisus",
             // "Ursus maritimus",
             // "Canis lupus"
         ];
@@ -78,6 +81,11 @@
             "Schatkamer 2.0" => "",
         ];
 
+        // natuurwijzer => publiek
+        private $exhibitionRoomsPublic = [
+            "Leven (de Ontmoeting)" => "Leven",
+        ];
+
         private $brahmsPrefixes = [
             "WAG", "U", "NYIMG",
             "L", "BALGOOY", "XXXXXXXXXXXX",
@@ -98,11 +106,15 @@
 
         const TABLE_MASTER = 'tentoonstelling';
         const TABLE_CRS = 'crs';
+        const TABLE_BRAHMS = 'brahms';
         const TABLE_IUCN = 'iucn';
         const TABLE_NATUURWIJZER = 'natuurwijzer';
         const TABLE_TOPSTUKKEN = 'topstukken';
         const TABLE_TTIK = 'ttik';
         const TABLE_NBA = 'nba';
+
+        // const TABLE_MASTER_NAME_COL = 'SCname';
+        const TABLE_MASTER_NAME_COL = 'SCname controle';
 
         const SYSTEM_ERROR = 3;
         const DATA_ERROR = 1;
@@ -124,7 +136,7 @@
                 $this->masterList = array_filter($this->masterList,
                 function($a) use ($b)
                 {
-                    return in_array($a["SCname"],$b);
+                    return in_array($a[self::TABLE_MASTER_NAME_COL],$b);
                 });
             }
         }
@@ -140,6 +152,11 @@
                 $d[]=$val;
             }
             $this->CRS = $d;
+        }
+
+        public function setBrahms()
+        {
+            $this->brahms = $this->_getMySQLSource(self::TABLE_BRAHMS);
         }
 
         public function setIUCN()
@@ -297,15 +314,11 @@
                 json_decode($row["urls"]));
             }
             $db->close();
-
         }
 
-        // TODO: STUB
         public function setImageSquares()
         {
             $this->imageSquares=[];
-            return;
-
             $db = new SQLite3($this->SQLitePath["squares"], SQLITE3_OPEN_READWRITE);
             $sql = $db->prepare('SELECT * FROM squared_images');
             $results = $sql->execute();
@@ -328,6 +341,11 @@
         public function getCRS()
         {
             return $this->CRS;
+        }
+
+        public function getBrahms()
+        {
+            return $this->brahms;
         }
 
         public function getIUCN()
@@ -370,6 +388,33 @@
             return $this->taxonList;
         }
 
+        public function makeTaxonList()
+        {
+            $this->taxonList=[];
+            foreach ($this->masterList as $key => $val)
+            {
+                $val[self::TABLE_MASTER_NAME_COL]=trim($val[self::TABLE_MASTER_NAME_COL]);
+                if (empty($val[self::TABLE_MASTER_NAME_COL]))
+                {
+                    continue;
+                }
+                $this->taxonList[$val[self::TABLE_MASTER_NAME_COL]]["taxon"] = $val[self::TABLE_MASTER_NAME_COL];
+
+                if (preg_match('/(\s){1,}(spec\.|sp\.)$/', $val[self::TABLE_MASTER_NAME_COL]))
+                {
+                    $this->taxonList[$val[self::TABLE_MASTER_NAME_COL]]["taxon"] = preg_replace('/(\s){1,}(spec\.|sp\.)$/', '', $val[self::TABLE_MASTER_NAME_COL]);
+                    $this->taxonList[$val[self::TABLE_MASTER_NAME_COL]]["taxon_original"] = $val[self::TABLE_MASTER_NAME_COL];
+                }
+            }
+
+            uasort($this->taxonList,function($a,$b)
+            {
+                $a=strtolower($a["taxon"]);
+                $b=strtolower($b["taxon"]);
+                return ($a==$b ? 0 : (($a<$b) ? -1 : 1));
+            });
+        }
+
         public function getTaxonListTTIKMatches()
         {
             $d = [ "no_match" => [], "match" => [] ];
@@ -402,33 +447,6 @@
             }
 
             return [ "data" => $d, "count" => $c, "ht_breakdown" => $h ];
-        }
-
-        public function makeTaxonList()
-        {
-            $this->taxonList=[];
-            foreach ($this->masterList as $key => $val)
-            {
-                $val["SCname"]=trim($val["SCname"]);
-                if (empty($val["SCname"]))
-                {
-                    continue;
-                }
-                $this->taxonList[$val["SCname"]]["taxon"] = $val["SCname"];
-
-                if (preg_match('/(\s){1,}(spec\.|sp\.)$/', $val["SCname"]))
-                {
-                    $this->taxonList[$val["SCname"]]["taxon"] = preg_replace('/(\s){1,}(spec\.|sp\.)$/', '', $val["SCname"]);
-                    $this->taxonList[$val["SCname"]]["taxon_original"] = $val["SCname"];
-                }
-            }
-
-            uasort($this->taxonList,function($a,$b)
-            {
-                $a=strtolower($a["taxon"]);
-                $b=strtolower($b["taxon"]);
-                return ($a==$b ? 0 : (($a<$b) ? -1 : 1));
-            });
         }
 
         public function addTaxonomyToTL()
@@ -468,8 +486,7 @@
                     foreach ($this->ttik as $tVal)
                     {
                         if(isset($tVal["classification"]))
-                        {
-                            
+                        {                            
                             $key = array_search(strtolower($val["taxon"]),array_column($tVal["classification"], '_taxon_ic'));
                             if ($key!==false)
                             {
@@ -516,7 +533,7 @@
             }
 
             $this->taxonList = $d;
-            $this->log(sprintf("matched %s materlist records to a TTIK record",$matched),self::DATA_MESSAGE,"TTIK");
+            $this->log(sprintf("matched %s masterlist records to a TTIK record",$matched),self::DATA_MESSAGE,"TTIK");
         }
 
         public function addObjectDataToTL()
@@ -528,7 +545,14 @@
 
                 $matches = array_filter($this->masterList,function($a) use ($val)
                 {
-                    return $val["taxon"]==$a["SCname"];
+                    if (isset($val["taxon_original"]))
+                    {
+                        return $val["taxon_original"]==$a[self::TABLE_MASTER_NAME_COL];
+                    }
+                    else
+                    {
+                        return $val["taxon"]==$a[self::TABLE_MASTER_NAME_COL];
+                    }
                 });
 
                 if (empty($matches))
@@ -596,6 +620,50 @@
                                 $val["_crs_match"]=$match["FULLSCIENTIFICNAME"];
                             }
 
+                        }
+                    }
+                    $d[]=$object;
+                }
+
+                $m[$key]=$val;
+                $m[$key]["object_data"]=$d;
+            }
+            $this->taxonList=$m;
+        }
+
+        public function addBrahmsToTL()
+        {
+            $m=[];
+            foreach ($this->taxonList as $key => $val)
+            {
+                $d=[];
+                foreach ((array)$val["object_data"] as $object)
+                {
+                    $matches = array_filter($this->brahms,function($a) use ($object)
+                    {
+                        return $object["unitid"]==$a["unitid"];
+                    });
+
+                    if (!empty($matches))
+                    {
+                        // $this->log(sprintf("matched Brahms record %s",$object["unitid"]),self::DATA_ERROR,"Brahms");
+
+                        foreach ($matches as $match)
+                        {
+                            if (!empty($match["URL"]))
+                            {
+                                if (!filter_var($match["URL"], FILTER_VALIDATE_URL))
+                                {
+                                    $this->log(sprintf("invalid image URL for Brahms record %s: %s",$object["id"],$match["URL"]),self::DATA_ERROR,"Brahms");
+                                }
+                                else
+                                {
+                                    $object["images"][]=
+                                        [
+                                            "url"=>$match["URL"]
+                                        ];
+                                }
+                            }
                         }
                     }
                     $d[]=$object;
@@ -710,106 +778,203 @@
 
         public function addNatuurwijzerTextsToTL()
         {
+            /*
+                $matched_on_taxon
+                    articles that have a tag that matches the taxon's name (or nomen).
+
+                $matched_on_classification
+                    articles that have a tag that matches an element in the taxon's classification.
+                    the array's keys will also function as ordering mechanism, so that lower keys,
+                    which match lower taxa, will be ranked higher, as they cover more specific
+                    subjects.
+                    
+                $matched_on_object
+                    articles that have a tag that matches the exhibition room of one of the taxon's 
+                    objects.
+
+            */
+
             $d=[];
 
             foreach ($this->taxonList as $val)
             {
-                if ($val["taxonomy"]["classification"])
-                {
-                    foreach ($val["taxonomy"]["classification"] as $taxon)
-                    {
-                        $needle = $taxon["taxon"];
-                        $needle_rank = $taxon["rank"];
+                $used_ids=[];
+                $matched_on_taxon=[];
+                $matched_on_classification=[];
+                $matched_on_object=[];
 
-                        $matched = array_filter(
-                            array_map(function($a) use ($needle,$needle_rank)
+                // matching on taxon
+                $needle_nomen = $val["taxon"];
+                $needle_taxon = $val["taxonomy"]["taxon"];
+
+                $matched_on_taxon = array_filter(
+                    $this->natuurwijzer,
+                    function($a) use ($needle_nomen,$needle_taxon)
+                    {
+                        if (!isset($a["_taxon"]))
+                        {
+                            return false;
+                        }
+
+                        if (array_search($needle_nomen, $a["_taxon"])!==false)
+                        {
+                            return true;
+                        }
+
+                        return array_search($needle_taxon, $a["_taxon"])!==false;
+                    }
+                );
+
+                $used_ids = array_values(array_map(function($a) { return $a["id"];} , $matched_on_taxon));
+
+                // matching on higher classification
+                if (count($matched_on_taxon)<$this->softMaxTaxonArticles && isset($val["taxonomy"]["classification"]))
+                {
+                    foreach (array_slice(array_reverse($val["taxonomy"]["classification"]), 1, null) as $hKey=>$hVal)
+                    {
+                        $needle_nomen = $hVal["taxon"];
+
+                        $matched_on_classification[$hKey] = array_filter(
+                            $this->natuurwijzer,
+                            function($a) use ($needle_nomen,&$used_ids)
                             {
-                                if (isset($a["_taxon"]))
+                                if (!isset($a["_taxon"]))
                                 {
-                                    if (array_search($needle, $a["_taxon"]))
-                                    {
-                                        $a["_matched_taxon"]=[ "taxon"=>$needle, "rank"=>$needle_rank ];
-                                    }
+                                    return false;
                                 }
-                                return $a;
-                            }, $this->natuurwijzer ),
-                            function($a) 
-                            {
-                                return isset($a["_matched_taxon"]);
+
+                                $key = array_search($needle_nomen, $a["_taxon"]);
+
+                                if ($key===false)
+                                {
+                                    return false;
+                                }
+
+                                if (in_array($a["id"], $used_ids))
+                                {
+                                    return false;
+                                }
+
+                                $used_ids[]=$a["id"];
+                                return true;
                             }
                         );
+                    }
+                }
+                
+                // matching on exhibition rooms
+                if ($val["object_data"])
+                {
+                    $rooms=array_unique(array_values(array_column($val["object_data"],"exhibition_room")));
 
-                        if (!empty($matched))
+                    foreach ($rooms as $room)
+                    {
+                        if (isset($this->exhibitionRoomsTranslations[$room]))
                         {
-                            foreach ($matched as $mKey => $match)
-                            {
-                                if (isset($this->overallTextOccurrences[$match["id"]]))
-                                {
-                                    $this->overallTextOccurrences[$match["id"]]++;
-                                }
-                                else
-                                {
-                                    $this->overallTextOccurrences[$match["id"]]=1;
-                                }
-                                $val["natuurwijzer_texts_matches"]["taxa"][$match["id"]]=$match["_matched_taxon"];
-                                unset($match["_matched_taxon"]);
-                                $val["texts"]["natuurwijzer"][$match["id"]]=$match;
-                            }
+                            $needle = $this->exhibitionRoomsTranslations[$room];
+
+                            $matched_on_object = array_merge(
+                                $matched_on_object,
+                                array_filter(
+                                    $this->natuurwijzer,
+                                    function($a) use ($needle,&$used_ids)
+                                    {
+                                        if (!isset($a["_exhibition_rooms"]))
+                                        {
+                                            return false;
+                                        }
+
+                                        $key = array_search($needle, $a["_exhibition_rooms"])!=false;
+                                        
+                                        if ($key===false)
+                                        {
+                                            return false;
+                                        }
+                                        if (in_array($a["id"], $used_ids))
+                                        {
+                                            return false;
+                                        }
+
+                                        $used_ids[]=$a["id"];
+                                        return true;
+                                    }
+                                )
+                            );
                         }
                     }
                 }
 
-                if ($val["object_data"])
-                {
-                    foreach ($val["object_data"] as $object)
-                    {
-                        if (isset($this->exhibitionRoomsTranslations[$object["exhibition_room"]]))
-                        {
-                            $needle = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
+                // print_r($matched_on_taxon);
+                // print_r($matched_on_classification);
+                // print_r($matched_on_object);die();
 
-                            $matched = array_filter(
-                                array_map(function($a) use ($needle)
-                                {
-                                    if (isset($a["_exhibition_rooms"]))
-                                    {
-                                        if (array_search($needle, $a["_exhibition_rooms"]))
-                                        {
-                                            $a["_matched_room"]=$needle;
-                                        }
-                                    }
-                                    return $a;
-                                }, $this->natuurwijzer ),
-                                function($a) 
-                                {
-                                    return isset($a["_matched_room"]);
-                                }
-                            );
-                            if (!empty($matched))
-                            {
-                                foreach ($matched as $mKey => $match)
-                                {
-                                    if (isset($this->overallTextOccurrences[$match["id"]]))
-                                    {
-                                        $this->overallTextOccurrences[$match["id"]]++;
-                                    }
-                                    else
-                                    {
-                                        $this->overallTextOccurrences[$match["id"]]=1;
-                                    }
-                                    
-                                    $val["natuurwijzer_texts_matches"]["rooms"][$match["id"]]=$match["_matched_room"];
-                                    unset($match["_matched_room"]);
-                                    $val["texts"]["natuurwijzer"][$match["id"]]=$match;
-                                }
-                            }
-                        }
+                foreach ($matched_on_taxon as $match)
+                {
+                    $this->overallTextOccurrences[$match["id"]] = 
+                        isset($this->overallTextOccurrences[$match["id"]]) ?
+                            $this->overallTextOccurrences[$match["id"]]+1 : 1;
+
+                    $val["natuurwijzer_texts_matches"][]=
+                        [
+                            "sort" => "1", 
+                            "id" => $match["id"],
+                            "source" => "taxon" 
+                        ];
+                    $val["texts"]["natuurwijzer"][$match["id"]]=$match;
+                }
+
+                foreach ($matched_on_classification as $classKey => $match)
+                {
+                    foreach ($match as $classMatch)
+                    {
+                        $this->overallTextOccurrences[$classMatch["id"]] = 
+                            isset($this->overallTextOccurrences[$classMatch["id"]]) ?
+                                $this->overallTextOccurrences[$classMatch["id"]]+1 : 1;
+
+                        $val["natuurwijzer_texts_matches"][]=
+                            [
+                                "sort" => "10.".$classKey,
+                                "id" => $classMatch["id"],
+                                "source" => "classification"
+                            ];
+
+                        $val["texts"]["natuurwijzer"][$classMatch["id"]]=$classMatch;
                     }
+                }
+
+                foreach ($matched_on_object as $match)
+                {
+                    $this->overallTextOccurrences[$match["id"]] = 
+                        isset($this->overallTextOccurrences[$match["id"]]) ?
+                            $this->overallTextOccurrences[$match["id"]]+1 : 1;
+
+                    $val["natuurwijzer_texts_matches"][]=
+                        [
+                            "sort" => "100",
+                            "id" => $match["id"],
+                            "source" => "room" 
+                        ];
+                    $val["texts"]["natuurwijzer"][$match["id"]]=$match;
                 }
 
                 $d[]=$val;
             }
+
+            // arsort($this->overallTextOccurrences);
+
+            foreach($d as $key => $val)
+            {
+                if ($val["natuurwijzer_texts_matches"])
+                {
+                    foreach ($val["natuurwijzer_texts_matches"] as $sKey=>$sVal)
+                    {
+                        $d[$key]["natuurwijzer_texts_matches"][$sKey]["sort"] .= "." . $this->overallTextOccurrences[$sVal["id"]];
+                    }
+                }
+            }
+
             $this->taxonList = $d;
-            arsort($this->overallTextOccurrences);
+
         }
 
         public function addTopstukkenTextsToTL()
@@ -855,8 +1020,15 @@
                     {
                         if (isset($this->imageSelection[$object["unitid"]]))
                         {
-                            $val["object_data"][$key]["images"]=
-                                array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
+                            if (!isset($object["images"]))
+                            {
+                                $this->log(sprintf("taxon %s, unitid %s is present in image_selection but object has no images (!?)",$val["taxon"],$object["unitid"]),self::DATA_ERROR,"IMAGES");
+                            }
+                            else
+                            {
+                                $val["object_data"][$key]["images"]=
+                                    array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
+                            }
                         }
                     }    
                 }
@@ -869,125 +1041,96 @@
         public function makeLinksSelection()
         {
             $d=[];
+
             foreach ($this->taxonList as $val)
             {
-                $linked_articles=[];
-
-                if (isset($val["natuurwijzer_texts_matches"]))
+                if (!isset($val["natuurwijzer_texts_matches"]))
                 {
-                    $unique_taxa_article_keys = [];
-                    $unique_rooms_article_keys = [];
-
-                    if (isset($val["natuurwijzer_texts_matches"]["taxa"]))
-                    {
-                        $unique_taxa_article_keys = array_unique(array_keys($val["natuurwijzer_texts_matches"]["taxa"]));
-                    }
-
-                    if (isset($val["natuurwijzer_texts_matches"]["rooms"]))
-                    {
-                        $unique_rooms_article_keys = array_unique(array_keys($val["natuurwijzer_texts_matches"]["rooms"]));
-                        $unique_rooms_article_keys = array_filter(
-                            $unique_rooms_article_keys,
-                            function($a) use ($unique_rooms_article_keys,$unique_taxa_article_keys)
-                            {
-                                return !in_array($a, array_intersect($unique_rooms_article_keys,$unique_taxa_article_keys));
-                            });
-                    }
-
-                    if (count($unique_taxa_article_keys)>0)
-                    {
-                        $rKeys=[];
-                        foreach (array_reverse($val["natuurwijzer_texts_matches"]["taxa"],true) as $key=>$tKey)
-                        {
-                            $rKeys[$tKey["rank"]][]=$key;
-                        }
-
-                        foreach ($rKeys as $rank => $keys)
-                        {
-                            uasort($keys, function($a,$b)
-                            {
-                                $aS = isset($this->overallTextUsage[$a]) ? $this->overallTextUsage[$a] : 0;   
-                                $bS = isset($this->overallTextUsage[$b]) ? $this->overallTextUsage[$b] : 0;
-                                if ($aS == $bS)
-                                {
-                                    $aS = isset($this->overallTextOccurrences[$a]) ? $this->overallTextOccurrences[$a] : 0;   
-                                    $bS = isset($this->overallTextOccurrences[$b]) ? $this->overallTextOccurrences[$b] : 0;
-                                    return (($aS==$bS) ? 0 : (($aS < $bS) ? -1 : 1));
-
-                                }
-                                return ($aS < $bS) ? -1 : 1;
-                            });
-
-                            foreach ($keys as $aKey)
-                            {
-
-                                if (count($linked_articles)>=$this->softMaxTaxonArticles)
-                                {
-                                    if (($this->hardMaxTotalArticles - count($linked_articles)) <= count($unique_rooms_article_keys))
-                                    {
-                                        break;
-                                    }
-                                }
-
-                                $linked_articles[] = 
-                                    $val["texts"]["natuurwijzer"][$aKey] +
-                                    [ "_link_origin"  => "taxon" ];
-
-                                if (isset($this->overallTextUsage[$aKey]))
-                                {
-                                    $this->overallTextUsage[$aKey]++;
-                                }
-                                else
-                                {
-                                    $this->overallTextUsage[$aKey]=1;
-                                }
-                            }
-                        }
-                    }
-
-                    if (isset($val["natuurwijzer_texts_matches"]["rooms"]))
-                    {
-                        uasort($unique_rooms_article_keys, function($a,$b)
-                        {
-                            $aS = isset($this->overallTextUsage[$a]) ? $this->overallTextUsage[$a] : 0;   
-                            $bS = isset($this->overallTextUsage[$b]) ? $this->overallTextUsage[$b] : 0;
-                            if ($aS == $bS)
-                            {
-                                $aS = isset($this->overallTextOccurrences[$a]) ? $this->overallTextOccurrences[$a] : 0;   
-                                $bS = isset($this->overallTextOccurrences[$b]) ? $this->overallTextOccurrences[$b] : 0;
-                                return (($aS==$bS) ? 0 : (($aS < $bS) ? -1 : 1));
-
-                            }
-                            return ($aS < $bS) ? -1 : 1;
-                        });
-
-                        foreach ($unique_rooms_article_keys as $aKey)
-                        {
-                            if (count($linked_articles)>=$this->hardMaxTotalArticles)
-                            {
-                                break;
-                            }
-
-                            $linked_articles[] =
-                                $val["texts"]["natuurwijzer"][$aKey] +
-                                [ "_link_origin"  => "room" ];
-
-                            if (isset($this->overallTextUsage[$aKey]))
-                            {
-                                $this->overallTextUsage[$aKey]++;
-                            }
-                            else
-                            {
-                                $this->overallTextUsage[$aKey]=1;
-                            }
-                        }
-                    }
-
-                    unset($val["natuurwijzer_texts_matches"]);
-                    $val["texts"]["natuurwijzer"] = $linked_articles;
+                    continue;
                 }
+
+                usort($val["natuurwijzer_texts_matches"],function($a,$b)
+                {
+                    if ($a["sort"]==$b["sort"])
+                    {
+                        return $a["id"]>$b["id"];
+                    }
+                    else
+                    {
+                        return $a["sort"]>$b["sort"];
+                    }
+                });
+
+                $linked_articles=[];
+                $taxon_articles=0;
+
+                foreach ($val["natuurwijzer_texts_matches"] as $match)
+                {
+                    if (count($linked_articles) >= $this->hardMaxTotalArticles)
+                    {
+                        break;
+                    }
+
+                    if ($taxon_articles >= $this->softMaxTaxonArticles)
+                    {
+                        break;
+                    }
+
+                    if ($match["source"]=="taxon")
+                    {
+                        $linked_articles[] = 
+                            $val["texts"]["natuurwijzer"][$match["id"]] +
+                            [ "_link_origin"  => $match["source"] ];
+                        $taxon_articles++;
+                    }
+                }
+
+                if ($taxon_articles < $this->softMaxTaxonArticles)
+                {
+                    foreach ($val["natuurwijzer_texts_matches"] as $match)
+                    {
+                        if (count($linked_articles) >= $this->hardMaxTotalArticles)
+                        {
+                            break;
+                        }
+
+                        if ($taxon_articles >= $this->softMaxTaxonArticles)
+                        {
+                            break;
+                        }
+
+                        if ($match["source"]=="classification")
+                        {
+                            $linked_articles[] = 
+                                $val["texts"]["natuurwijzer"][$match["id"]] +
+                                [ "_link_origin"  => $match["source"] ];
+                            $taxon_articles++;
+                        }
+                    }
+                }
+
+
+                foreach ($val["natuurwijzer_texts_matches"] as $match)
+                {
+                    if (count($linked_articles) >= $this->hardMaxTotalArticles)
+                    {
+                        break;
+                    }
+
+                    if ($match["source"]=="room")
+                    {
+                        $linked_articles[] = 
+                            $val["texts"]["natuurwijzer"][$match["id"]] +
+                            [ "_link_origin"  => $match["source"] ];
+                    }
+                }
+
+                unset($val["natuurwijzer_texts_matches"]);
+                $val["texts"]["natuurwijzer"] = $linked_articles;
+
                 $d[]=$val;
             }
+
             $this->taxonList = $d;
 
         }
@@ -1011,7 +1154,6 @@
                 $this->_addDocumentHeaderImage();
                 $this->_addDocumentTitles();
                 $this->_addDocumentDefinitionsBlock();
-                $this->_addDocumentNames();
                 $this->_addDocumentIUCN();
                 $this->_addDocumentContent();
                 $this->_addDocumentObjects();
@@ -1019,7 +1161,6 @@
 
                 if (!$this->_checkMinimumRequirements())
                 {
-                    $this->log(sprintf("skipping %s",$this->document["names"]["scientific"]),self::DATA_MESSAGE,"generator");
                     continue;
                 }
 
@@ -1042,8 +1183,9 @@
         {
             $this->document["id"] = $this->documentId++;
             $this->document["created"] = $this->dateStamp;
+            $this->document["last_modified"] = $this->dateStamp;
             $this->document["language"] = $this->languageDefault;
-            $this->document["key"] = $this->rawDocData["taxonomy"]["_nomen"];
+            $this->document["_key"] = str_replace(" ", "_", strtolower($this->rawDocData["taxon"]));
         }
 
         private function _addDocumentHeaderImage()
@@ -1059,20 +1201,48 @@
             }
         }
 
+        private function _correctUcFirst( $name, $language=null )
+        {
+
+            $language = $language ?? $this->document["language"];
+
+            if ($language!="nl")
+            {
+                return ucfirst($name);
+            }
+            else
+            {
+                foreach (["ij"] as $digraph)
+                {
+                    if (substr(strtolower($name), 0, strlen($digraph))==$digraph)
+                    { 
+                       return strtoupper($digraph) . substr($name, strlen($digraph));
+                    }
+                }
+
+                return ucfirst($name);
+            }
+        }
+
         private function _addDocumentTitles()
         {
             $block_name="titles";
 
             try {
+                $this->document[$block_name]["page"] = $this->rawDocData["taxonomy"]["dutch"];
                 $this->document[$block_name]["main"] = $this->rawDocData["taxonomy"]["dutch"];
                 $this->document[$block_name]["sub"] = 
                     isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["nomen"]) ? 
                         $this->rawDocData["taxonomy"]["nomen"] : 
                         $this->rawDocData["taxon"];
 
-                $this->document[$block_name]["main"] = ucfirst($this->document[$block_name]["main"]);
-                $this->document[$block_name]["sub"] = ucfirst($this->document[$block_name]["sub"]);
-            } catch (Exception $e) {
+                foreach (["page","main","sub"] as $type)
+                {
+                    $this->document[$block_name][$type] = $this->_correctUcFirst($this->document[$block_name][$type]);
+                }
+            } 
+            catch (Exception $e)
+            {
                 // gets caught in _checkMinimumRequirements
             }
         }
@@ -1135,26 +1305,6 @@
                 $b = $order[$b["key"]];
                 return (($a == $b) ? 0 : (($a < $b) ? -1 : 1));
             });
-        }
-
-        private function _addDocumentNames()
-        {
-            $block_name="names";
-
-            $this->document[$block_name]["scientific"] = 
-                isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["nomen"]) ? 
-                    $this->rawDocData["taxonomy"]["nomen"] : 
-                    $this->rawDocData["taxon"];
-
-            if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["dutch"]))
-            {
-                $this->document[$block_name]["dutch"] = $this->rawDocData["taxonomy"]["dutch"];
-            }
-
-            if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["english"]))
-            {
-                $this->document[$block_name]["english"] = $this->rawDocData["taxonomy"]["english"];
-            }
         }
 
         private function _addDocumentContent()
@@ -1222,6 +1372,7 @@
 
                     $o=[];
                     $o["id"]=$object["unitid"];
+                    $o["title"]=$object["unitid"];
 
                     if (isset($object["images"]))
                     {
@@ -1236,9 +1387,12 @@
                         }
                     }
 
+                    $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
+                    $room =  $this->exhibitionRoomsPublic[$room] ?? $room;
+
                     $o["data"] = [
                         [ "label" => "Registratienummer", "text" => $object["unitid"] ],
-                        [ "label" => "Locatie", "text" => $this->exhibitionRoomsTranslations[$object["exhibition_room"]] ]
+                        [ "label" => "Locatie", "text" => $room ]
                     ];
 
 
@@ -1250,7 +1404,6 @@
                             $o["data"],
                             $this->_distillNBAGatheringEvent($this->NBA[$key]["gatheringEvent"])
                         );
-                        echo $object["unitid"], "\n";
                     }
 
                     if (isset($this->rawDocData["topstuk"]) && $this->rawDocData["topstuk"]["_registrationNumber_ic"]==strtolower($object["unitid"]))
@@ -1297,9 +1450,9 @@
                     $links[] = [
                         "title" => $val["title"],
                         "description" => $val["intro_text"],
-                        "url_image" => $val["_image_urls"]["original"],
-                        "url_link" => $val["_full_url"],
-                        // "_link_origin" => $val["_link_origin"],
+                        "url_image" => trim($imageUrl),
+                        "url_link" => trim($val["_full_url"]),
+                        "_origin" => $val["_link_origin"],
                         // "_id" => $val["id"],
                     ];
                 }
@@ -1460,21 +1613,6 @@
             return $path . $filename . "." . $ext;                
         }
 
-        private function _checkMinimumRequirements()
-        {
-            // log any of this?
-
-            if (!isset($this->document["titles"]["main"])) return false;
-            if (!isset($this->document["titles"]["sub"])) return false;
-            if (!isset($this->document["names"]["scientific"])) return false;
-            if (!isset($this->document["names"]["dutch"])) return false;
-            if (!isset($this->document["content"]) || count($this->document["content"])<1) return false;
-            if (!isset($this->document["objects"]) || count($this->document["objects"])<1) return false;
-            if (!isset($this->document["links"]) || count($this->document["links"])<1) return false;
-
-            return true;
-        }
-
         private function _distillNBAGatheringEvent( $event )
         {
             $d=[];
@@ -1523,5 +1661,54 @@
 
             return array_filter($d, function($a) { return !empty($a["text"]); });
         }
+
+        private function _checkMinimumRequirements()
+        {
+            try {
+                if (!isset($this->document["titles"]["main"])) throw new Exception("no dutch name", 1);
+                if (!isset($this->document["titles"]["sub"])) throw new Exception("no scientifc name", 1);
+                if (!isset($this->document["objects"]) || count($this->document["objects"])<1) throw new Exception("no objects", 1);
+                if (!isset($this->document["content"]) || count($this->document["content"])<1) throw new Exception("no content", 1);
+                if (!isset($this->document["links"]) || count($this->document["links"])<1) throw new Exception("no links", 1);
+            }
+            catch (Exception $e)
+            {
+                $this->log(sprintf("skipping %s: %s",$this->rawDocData["taxon"],$e->getMessage()),self::DATA_MESSAGE,"generator");
+                return false;
+            }
+
+            return true;
+        }
+
+
+/*
+
+        private function _addDocumentNames()
+        {
+            $block_name="names";
+            $this->document[$block_name]["scientific"] = 
+                isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["taxon"]) ? 
+                    $this->rawDocData["taxonomy"]["taxon"] : 
+                    $this->rawDocData["taxon"];
+            $this->document[$block_name]["scientific_display"] = 
+                isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["_nomen"]) && isset($this->rawDocData["taxonomy"]["authorship"]) ? 
+                    "<i>" . $this->rawDocData["taxonomy"]["_nomen"] ."</i> " .$this->rawDocData["taxonomy"]["authorship"] : 
+                    $this->document["names"]["scientific"];
+            $this->document[$block_name]["nomen"] = 
+                isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["_nomen"]) ? 
+                    $this->rawDocData["taxonomy"]["_nomen"] : 
+                    $this->rawDocData["taxon"];
+            if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["dutch"]))
+            {
+                $this->document[$block_name]["dutch"] = $this->rawDocData["taxonomy"]["dutch"];
+            }
+            if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["english"]))
+            {
+                $this->document[$block_name]["english"] = $this->rawDocData["taxonomy"]["english"];
+            }
+        }
+
+*/
+
 
     }

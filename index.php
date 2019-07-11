@@ -15,7 +15,7 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-    // include_once("auth.php");
+    include_once("auth.php");
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
     include_once('class.dataBrowser.php');
@@ -34,6 +34,7 @@
 
     $d->setMasterList();
     $d->setCRS();
+    $d->setBrahms();
     $d->setIUCN();
     $d->setNatuurwijzer();
     $d->setTopstukken();
@@ -41,9 +42,10 @@
     $d->setNBA();
     $d->setExhibitionRooms();
     $d->setImageSelection();
-    $d->setImageSquares();  // STUB
+    $d->setImageSquares();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
+    $d->addObjectDataToTL();
 
     $b = new DataBrowser;
 
@@ -86,8 +88,11 @@
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="generate")
     {
-        $d->addObjectDataToTL();
+
+        set_time_limit(300);
+
         $d->addCRSToTL();
+        $d->addBrahmsToTL();
         $d->addIUCNToTL();
 
         $d->resolveExhibitionRooms();
@@ -108,6 +113,7 @@
     $crs = $d->getCRS();
     $iucn = $d->getIUCN();
     $nba = $d->getNBA();
+    $brahms = $d->getBrahms();
     $natuurwijzer = $d->getNatuurwijzer();
     $topstukken = $d->getTopstukken();
     $ttik = $d->getTtik();
@@ -115,6 +121,7 @@
     $imageSquares = $d->getImageSquares();
     $taxonList = $d->getTaxonList();
 
+    // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
     // $ttikMatches = $d->getTaxonListTTIKMatches();
 
     $fPreview = $b->getFileLinks( "preview" );
@@ -157,6 +164,7 @@ tr td {
     echo '<tr><td>Masterlijst:</td><td>',count($masterList),'</td><td data-source="masterList" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>(taxonlijst):</td><td>',count($taxonList),'</td><td></td></tr>',"\n";
     echo '<tr><td>CRS:</td><td>',count($crs),'</td><td data-source="CRS" class="clickable refresh">&#128259;</td></tr>',"\n";
+    echo '<tr><td>Brahms:</td><td>',count($brahms),'</td><td></td></tr>',"\n";
     echo '<tr><td>IUCN:</td><td>',count($iucn),'</td><td data-source="IUCN" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>NBA:</td><td>',count($nba),'</td><td data-source="NBA" class="clickable refresh">&#128259;</td></tr>',"\n";
     echo '<tr><td>Natuurwijzer:</td><td>',count($natuurwijzer),'</td><td data-source="natuurwijzer" class="clickable refresh">&#128259;</td></tr>',"\n";
@@ -232,6 +240,15 @@ $( document ).ready(function()
 <pre>
 <?php
 
+    if (!empty($brahmsList))
+    {
+        foreach ($brahmsList as $val)
+        {
+            echo $val,"\n";
+        };
+    }
+
+
     // foreach ($taxonList as $val)
     // {
     //     echo $val["taxon"],"\n";
@@ -274,7 +291,7 @@ CHECK NOMEN BIJ EEN ONDERSOORT
 MORE NBA-DATA
 publishable Zaalnamen
 controleer topstuk in publish
-    $this->getBrahmsUnitIDsFromObjectData();
+    
 
     use CRS for full sci name if missing?
 
