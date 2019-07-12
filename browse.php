@@ -29,8 +29,13 @@
 
 <link rel="stylesheet" type="text/css" href="css/jquery.json-viewer.css" media="screen">
 <script type="text/javascript" src="js/jquery.json-viewer.js"></script>
+<link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
 
 <style>
+body {
+    font-family: Open Sans;
+}
+
 .clickable {
     cursor: pointer;
     text-decoration: underline;

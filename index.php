@@ -15,7 +15,7 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-    include_once("auth.php");
+    // include_once("auth.php");
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
     include_once('class.dataBrowser.php');
@@ -94,16 +94,13 @@
         $d->addCRSToTL();
         $d->addBrahmsToTL();
         $d->addIUCNToTL();
-
         $d->resolveExhibitionRooms();
-
         $d->addTTIKTextsToTL();
         $d->addNatuurwijzerTextsToTL();
         $d->addTopstukkenTextsToTL();
         $d->makeLinksSelection();
-
         $d->effectuateImageSelection();
-        // $d->addImageSquares();  // STUB
+        $d->addImageSquares();
         $d->generateJsonDocuments();
 
         $messages = $d->getMessages();
@@ -136,8 +133,11 @@
   crossorigin="anonymous"></script>
 
 <script type="text/javascript" src="js/main.js"></script>
-
+<link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
 <style>
+body {
+    font-family: Open Sans;
+}
 #numbers table tr:hover {
     background-color: #eee;
 }
@@ -154,24 +154,60 @@ tr td {
     height: 30px;
     padding: 0 5px 0 5px;
 }
+tr.titles td {
+    font-weight: bold;
+    background-color: #eee;
+}
+td.harvest {
+    font-size: 10px;
+}
+div.section {
+    display:none;
+}
+span.section-head {
+    display:block;
+    font-weight: bold;
+    cursor: pointer;
+}
+hr {
+    width: 350px;
+    text-align: left;
+}
 </style>
 </head>
 <body>
     <div id="numbers">
+        <h2>Museumapp Pipeline</h2>
         <table>
 <?php
 
-    echo '<tr><td>Masterlijst:</td><td>',count($masterList),'</td><td data-source="masterList" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>(taxonlijst):</td><td>',count($taxonList),'</td><td></td></tr>',"\n";
-    echo '<tr><td>CRS:</td><td>',count($crs),'</td><td data-source="CRS" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Brahms:</td><td>',count($brahms),'</td><td></td></tr>',"\n";
-    echo '<tr><td>IUCN:</td><td>',count($iucn),'</td><td data-source="IUCN" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>NBA:</td><td>',count($nba),'</td><td data-source="NBA" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Natuurwijzer:</td><td>',count($natuurwijzer),'</td><td data-source="natuurwijzer" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Topstukken:</td><td>',count($topstukken),'</td><td data-source="topstukken" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>TTIK:</td><td>',count($ttik),'</td><td data-source="ttik" class="clickable refresh">&#128259;</td></tr>',"\n";
-    echo '<tr><td>Afbeeldingselecties:</td><td>',count($imageSelections),'</td><td></td></tr>',"\n";
-    echo '<tr><td>Gegenereerde vierkanten:</td><td>',count($imageSquares),'</td><td></td></tr>',"\n";
+    echo '<tr class="titles"><td>bron</td><td>#</td><td class="harvest" colspan=2>harvest date</td></tr>',"\n";
+
+    $sources = [
+        [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "data-source" => "masterList" ],
+        [ "label" => "Taxa", "var" => $taxonList, "refreshable" => false ],
+        [ "label" => "CRS", "var" => $crs, "refreshable" => true, "data-source" => "CRS" ],
+        [ "label" => "Brahms", "var" => $brahms, "refreshable" => false ],
+        [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "data-source" => "IUCN" ],
+        [ "label" => "NBA", "var" => $nba, "refreshable" => true, "data-source" => "NBA" ],
+        [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "data-source" => "natuurwijzer" ],
+        [ "label" => "Topstukken", "var" => $topstukken, "refreshable" => true, "data-source" => "topstukken" ],
+        [ "label" => "TTIK", "var" => $ttik, "refreshable" => true, "data-source" => "ttik" ],
+        [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false ],
+        [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false ],
+    ];
+
+    foreach ($sources as $key => $source)
+    {
+        echo sprintf(
+            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td></tr>'."\n",
+            $source["label"],
+            $source["var"]["count"],
+            ($source["var"]["harvest_date"] ?? ""),
+            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>')
+        );
+    }
+
     echo '<tr><td colspan="3">&nbsp;</td></tr>',"\n";
     echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a href="browse.php">browse</a></td></tr>',"\n";
 ?>
@@ -186,13 +222,41 @@ tr td {
 
     if (isset($messages))
     {
-        echo "<h3>meldingen tijdens genereren bestanden:</h3>";
-        echo "<ul>";
+        echo "<i>fouten tijdens genereren bestanden:</i><br />";
+
+        $section=null;
+
         foreach ($messages as $val)
         {
-            echo "<li>",$val["message"]," (",$val["source"],")","</li>\n";
+            if (is_null($section) || ($section!=$val["source"]))
+            {
+                if (!is_null($section))
+                {
+                    echo "</div>\n";
+                }
+                $section = $val["source"];
+                echo '<span class="section-head '.$section.'" onclick="$(\'div.' . $section . '\').toggle();">' . $section . '</span>';
+                echo '<div class="section '.$section.'"><ul>'."\n";
+            }
+            
+            if ($val["level"]!=BaseClass::DATA_MESSAGE)
+            {
+                echo '<li class="'.$section.'">',$val["message"],"</li>\n";    
+            }
         }
-        echo "</ul>";
+
+        echo "</div>\n";
+
+        // echo "<i>meldingen tijdens genereren bestanden:</i><br />";
+        // echo "<ul>";
+        // foreach ($messages as $val)
+        // {
+        //     if ($val["level"]==BaseClass::DATA_MESSAGE)
+        //     {
+        //         echo "<li>",$val["message"]," (",$val["source"],")","</li>\n";    
+        //     }
+        // }
+        // echo "</ul>";
     }
 
     if (isset($publishMessage))

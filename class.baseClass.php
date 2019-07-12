@@ -6,8 +6,9 @@
         public $jsonPath = [ "preview" => null, "publish" => null ];
         private $messages=[];
 
-        const DATA_ERROR = 1;
-        const DATA_MESSAGE = 2;        
+        const DATA_MESSAGE = 1;        
+        const DATA_ERROR = 2;
+        const SYSTEM_ERROR = 3;
 
         public function setJsonPath( $state, $path )
         {
