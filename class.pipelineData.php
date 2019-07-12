@@ -4,7 +4,7 @@
     {
         private $db_credentials;
         private $db;
-        private $SQLitePath = [ "selector" => null, "squares" => null ];
+        private $SQLitePath = [ "selector" => null, "squares" => null  ];
         private $masterList;
         private $CRS;
         private $brahms;

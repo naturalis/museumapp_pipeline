@@ -11,6 +11,9 @@
     $imgSquaresDbPath = 
         isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : '/data/image_squares/square_images.db';
 
+    $documentHashesDbPath = 
+        isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : '/data/document_hashes/document_hashes.db';
+
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
@@ -51,6 +54,7 @@
 
     $b->setJsonPath( "preview", $jsonPreviewPath );
     $b->setJsonPath( "publish", $jsonPublishPath );
+    $b->setSQLitePath( $documentHashesDbPath );
 
     $s = new PipelineJobQueuer;
 
