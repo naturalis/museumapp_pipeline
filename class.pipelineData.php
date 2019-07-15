@@ -2,8 +2,6 @@
 
     class PipelineData extends BaseClass
     {
-        private $db_credentials;
-        private $db;
         private $SQLitePath = [ "selector" => null, "squares" => null  ];
         private $masterList;
         private $CRS;
@@ -187,7 +185,7 @@
             $d=[];
             foreach ($this->natuurwijzer as $key => $val)
             {
-                if (empty($val["taxon"]) && $val["exhibition_rooms"])
+                if (empty($val["taxon"]) && empty($val["exhibition_rooms"]))
                 {
                     continue;
                 }
@@ -300,8 +298,14 @@
         public function setExhibitionRooms()
         {
             $this->exhibitionRooms_NW=[];
+
             foreach ($this->natuurwijzer as $val)
             {
+                if (!isset($val["_exhibition_rooms"]))
+                {
+                    continue;
+                }
+
                 foreach($val["_exhibition_rooms"] as $room)
                 {
                     $this->exhibitionRooms_NW[$room]=$room;
@@ -1664,11 +1668,6 @@
             return $this->brahmsUnitIDs;
         }
 
-        public function setDatabaseCredentials( $p )
-        {
-            $this->db_credentials = $p;
-        }
-
         public function setSQLitePath( $source, $path )
         {
             if (array_key_exists($source, $this->SQLitePath))
@@ -1705,36 +1704,6 @@
             {
                 throw new Exception(sprintf("unknown JSON state: %s",$state), 1);                    
             }
-        }
-
-        private function _connectDatabase()
-        {
-            $this->db = new mysqli(
-                $this->db_credentials["host"],
-                $this->db_credentials["user"],
-                $this->db_credentials["pass"]
-            );
-
-            $this->db->select_db($this->db_credentials["database"]);
-            $this->db->set_charset("utf8");
-        }
-
-        private function _getMySQLSource( $source )
-        {
-            $list=[];
-
-            try {
-                $sql = $this->db->query("select * from " . $source);
-                $list=[];
-                while ($row = $sql->fetch_assoc())
-                {
-                    $list[]=$row;
-                }
-            } catch (Exception $e) {
-                $this->log(sprintf("could not read table %s",$source),self::SYSTEM_ERROR,"collector");
-            }
-
-            return $list;
         }
 
         private function _checkJsonPaths()

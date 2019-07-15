@@ -3,6 +3,8 @@
 
     class BaseClass
     {
+        public $db_credentials;
+        public $db;
         public $jsonPath = [ "preview" => null, "publish" => null ];
         private $messages=[];
 
@@ -63,6 +65,42 @@
                 }
             }
         }
+
+        public function setDatabaseCredentials( $p )
+        {
+            $this->db_credentials = $p;
+        }
+
+        public function _connectDatabase()
+        {
+            $this->db = new mysqli(
+                $this->db_credentials["host"],
+                $this->db_credentials["user"],
+                $this->db_credentials["pass"]
+            );
+
+            $this->db->select_db($this->db_credentials["database"]);
+            $this->db->set_charset("utf8");
+        }
+
+        public function _getMySQLSource( $source )
+        {
+            $list=[];
+
+            try {
+                $sql = $this->db->query("select * from " . $source);
+                $list=[];
+                while ($row = $sql->fetch_assoc())
+                {
+                    $list[]=$row;
+                }
+            } catch (Exception $e) {
+                $this->log(sprintf("could not read table %s",$source),self::SYSTEM_ERROR,"collector");
+            }
+
+            return $list;
+        }
+
 
 
     }

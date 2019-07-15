@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
 
     class DataBrowser extends BaseClass
     {
-        private $db;
         private $files=[];
         private $state;
         private $SQLitePath;

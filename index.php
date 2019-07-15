@@ -18,7 +18,7 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-    // include_once("auth.php");
+    include_once("auth.php");
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
     include_once('class.dataBrowser.php');
