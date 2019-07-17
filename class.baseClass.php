@@ -45,8 +45,6 @@
         public function log( $message, $level, $source=null )
         {
             $this->messages[]=[ "message" => $message, "level" => $level, "source" => $source ];
-            // if ($source=="TTIK" || $source=="CRS" || $source=="IUCN") return;
-            // echo "ERROR: ",$message,"\n";
         }
 
         public function getMessages()
@@ -71,7 +69,7 @@
             $this->db_credentials = $p;
         }
 
-        public function _connectDatabase()
+        public function connectDatabase()
         {
             $this->db = new mysqli(
                 $this->db_credentials["host"],
@@ -83,7 +81,7 @@
             $this->db->set_charset("utf8");
         }
 
-        public function _getMySQLSource( $source )
+        public function getMySQLSource( $source )
         {
             $list=[];
 

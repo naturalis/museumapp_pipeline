@@ -13,6 +13,7 @@
         private $ttik;
         private $imageSelection;
         private $imageSquares;
+        private $leenobjecten;
         private $exhibitionRooms_NW;
         private $exhibitionRooms_ML;
         private $overallTextOccurrences=[];
@@ -29,6 +30,8 @@
         private $hardMaxTotalArticles=8;
 
         private $debug_masterListSCnames = [
+            // "Giraffa reticulata",
+            // "Puma concolor",
             // "Abrus precatorius",
             // "Aschiphasma annulipes Westwood, 1834",
             // "Amazilia fimbriata",
@@ -102,8 +105,9 @@
             "query_param" => "?standalone"
         ];
 
-        private $squaredImagePlaceholderURL = "http://145.136.242.65:8080/stubs/placeholder.jpg";
-        private $squaredImageURLRoot = "http://145.136.242.65:8080/squared_images/";
+        private $squaredImagePlaceholderURL;
+        private $squaredImageURLRoot;
+        private $leenobjectImageURLRoot;
 
         const TABLE_MASTER = 'tentoonstelling';
         const TABLE_CRS = 'crs';
@@ -113,19 +117,50 @@
         const TABLE_TOPSTUKKEN = 'topstukken';
         const TABLE_TTIK = 'ttik';
         const TABLE_NBA = 'nba';
+        const TABLE_LEENOBJECTEN = 'leenobjecten';
 
         // const TABLE_MASTER_NAME_COL = 'SCname';
         const TABLE_MASTER_NAME_COL = 'SCname controle';
+        const PREFIX_LEENOBJECTEN = 'leen.';
 
         public function init()
         {
-            $this->checkJsonPaths();   
-            $this->_connectDatabase();
+            $this->checkJsonPaths();
+            $this->_checkImageURLs();
+            $this->connectDatabase();
+        }
+
+        public function setSquaredImagePlaceholderURL( $url )
+        {
+            $this->squaredImagePlaceholderURL = $url;
+        }
+
+        public function setSquaredImageURLRoot( $url )
+        {
+            $this->squaredImageURLRoot = $url;
+        }
+
+        public function setLeenobjectImageURLRoot( $url )
+        {
+            $this->leenobjectImageURLRoot = $url;
         }
 
         public function setMasterList()
         {
-            $this->masterList = $this->_getMySQLSource(self::TABLE_MASTER);
+            $this->masterList = $this->getMySQLSource(self::TABLE_MASTER);
+
+            $this->masterList=
+                array_map(function($a)
+                {
+                    $a["_is_leenobject"] =
+                        substr($a["Registratienummer"],0,strlen(self::PREFIX_LEENOBJECTEN))==self::PREFIX_LEENOBJECTEN;
+
+                    $prefix = @explode(".",$a["Registratienummer"])[0];
+
+                    $a["_is_brahms"] = !empty($prefix) && in_array($prefix, $this->brahmsPrefixes);
+
+                    return $a;
+                },$this->masterList);
 
             if (!empty($this->debug_masterListSCnames))
             {                
@@ -136,11 +171,13 @@
                     return in_array($a[self::TABLE_MASTER_NAME_COL],$b);
                 });
             }
+
+            $this->log(sprintf("read %s masterlist entries",count($this->masterList)),self::DATA_MESSAGE,"init");
         }
 
         public function setCRS()
         {
-            $this->CRS = $this->_getMySQLSource(self::TABLE_CRS);
+            $this->CRS = $this->getMySQLSource(self::TABLE_CRS);
 
             $d=[];
             foreach($this->CRS as $val)
@@ -149,21 +186,24 @@
                 $d[]=$val;
             }
             $this->CRS = $d;
+            $this->log(sprintf("read %s CRS entries",count($this->CRS)),self::DATA_MESSAGE,"init");
         }
 
         public function setBrahms()
         {
-            $this->brahms = $this->_getMySQLSource(self::TABLE_BRAHMS);
+            $this->brahms = $this->getMySQLSource(self::TABLE_BRAHMS);
+            $this->log(sprintf("read %s Brahms entries",count($this->brahms)),self::DATA_MESSAGE,"init");
         }
 
         public function setIUCN()
         {
-            $this->IUCN = $this->_getMySQLSource(self::TABLE_IUCN);
+            $this->IUCN = $this->getMySQLSource(self::TABLE_IUCN);
+            $this->log(sprintf("read %s IUCN entries",count($this->IUCN)),self::DATA_MESSAGE,"init");
         }
 
         public function setNBA()
         {
-            $this->NBA = $this->_getMySQLSource(self::TABLE_NBA);
+            $this->NBA = $this->getMySQLSource(self::TABLE_NBA);
 
             $d=[];
             foreach ($this->NBA as $key => $val)
@@ -176,11 +216,12 @@
             }
 
             $this->NBA = $d;
+            $this->log(sprintf("read %s NBA entries",count($this->NBA)),self::DATA_MESSAGE,"init");
         }
 
         public function setNatuurwijzer()
         {
-            $this->natuurwijzer = $this->_getMySQLSource(self::TABLE_NATUURWIJZER);
+            $this->natuurwijzer = $this->getMySQLSource(self::TABLE_NATUURWIJZER);
 
             $d=[];
             foreach ($this->natuurwijzer as $key => $val)
@@ -192,7 +233,10 @@
 
                 foreach (["taxon","exhibition_rooms","image_urls"] as $key)
                 {
-                    $val["_".$key]=json_decode($val[$key],true);
+                    $val["_".$key]=array_map(function($a)
+                        {
+                            return trim($a);
+                        }, (array)json_decode($val[$key],true));
                     unset($val[$key]);
                 }
 
@@ -206,11 +250,12 @@
             }
 
             $this->natuurwijzer = array_values($d);
+            $this->log(sprintf("read %s natuurwijzer entries",count($this->natuurwijzer)),self::DATA_MESSAGE,"init");
         }
 
         public function setTopstukken()
         {
-            $this->topstukken = $this->_getMySQLSource(self::TABLE_TOPSTUKKEN);
+            $this->topstukken = $this->getMySQLSource(self::TABLE_TOPSTUKKEN);
 
             $d=[];
             foreach($this->topstukken as $val)
@@ -225,11 +270,12 @@
                 $d[]=$val;
             }
             $this->topstukken = $d;
+            $this->log(sprintf("read %s topstukken entries",count($this->topstukken)),self::DATA_MESSAGE,"init");
         }
 
         public function setTTIK()
         {
-            $this->ttik = $this->_getMySQLSource(self::TABLE_TTIK);
+            $this->ttik = $this->getMySQLSource(self::TABLE_TTIK);
 
             $d=[];
             foreach($this->ttik as $val)
@@ -240,7 +286,6 @@
                         $a["_taxon_ic"]=strtolower($a["taxon"]);
                         return $a;
                     },(array)json_decode($val["classification"],true));
-
 
                 if (!empty($val["synonyms"]))
                 {
@@ -293,6 +338,7 @@
                 $d[]=$val;
             }
             $this->ttik = $d;
+            $this->log(sprintf("read %s TTIK entries",count($this->ttik)),self::DATA_MESSAGE,"init");
         }
 
         public function setExhibitionRooms()
@@ -313,6 +359,7 @@
             }
 
             $this->exhibitionRooms_NW = array_values($this->exhibitionRooms_NW);
+            $this->log(sprintf("found %s exhibition rooms",count($this->exhibitionRooms_NW)),self::DATA_MESSAGE,"init");
         }
 
         public function setImageSelection()
@@ -330,6 +377,7 @@
                 json_decode($row["urls"]));
             }
             $db->close();
+            $this->log(sprintf("found %s image selector sets",count($this->imageSelection)),self::DATA_MESSAGE,"init");
         }
 
         public function setImageSquares()
@@ -348,7 +396,26 @@
                 ];
             }
             $db->close();
+            $this->log(sprintf("found %s squared image entries",count($this->imageSquares)),self::DATA_MESSAGE,"init");
         }
+
+        public function setLeenObjecten()
+        {
+            $this->leenobjecten = $this->getMySQLSource(self::TABLE_LEENOBJECTEN);
+            $this->leenobjecten =
+                array_map(function($a)
+                {
+                    $a["_registratienummer_ic"]=strtolower($a["registratienummer"]);
+                    $a["_afbeeldingen"]=array_map(function($a)
+                        {
+                            return [ "url" => $this->leenobjectImageURLRoot . $a ];
+                        },array_filter((array)json_decode($a["afbeeldingen"])));
+                    return $a;
+                },$this->leenobjecten);
+
+            $this->log(sprintf("found %s leenobjecten entries",count($this->leenobjecten)),self::DATA_MESSAGE,"init");
+        }
+
 
         public function getMasterList()
         {
@@ -374,6 +441,15 @@
                 "data" => $this->brahms,
                 "count" => count($this->brahms),
                 "harvest_date" => $this->brahms[0]["inserted"]
+            ];
+        }
+
+        public function getLeenObjecten()
+        {
+            return [
+                "data" => $this->leenobjecten,
+                "count" => count($this->leenobjecten),
+                "harvest_date" => $this->leenobjecten[0]["inserted"]
             ];
         }
 
@@ -471,40 +547,8 @@
                 $b=strtolower($b["taxon"]);
                 return ($a==$b ? 0 : (($a<$b) ? -1 : 1));
             });
-        }
 
-        public function getTaxonListTTIKMatches()
-        {
-            $d = [ "no_match" => [], "match" => [] ];
-
-            $c = [
-                "taxon" => 0,
-                "synonym" => 0,
-                "nomen" => 0,
-                "higher_taxon" => 0,
-            ];
-
-            $h=[];
-
-            foreach ($this->taxonList as $key => $val)
-            {
-                if (!isset($val["taxonomy"]))
-                {
-                    $d["no_match"][] = $val["taxon"];
-                }
-                else
-                {
-                    $d["match"][] = [ "taxon" => $val["taxon"], "match" => $val["taxonomy"]["_match"] ];
-                    $c[$val["taxonomy"]["_match"]["matched_on"]]++;
-                    if ($val["taxonomy"]["_match"]["matched_on"]=="higher_taxon")
-                    {
-                        $h[$val["taxonomy"]["_match"]["rank"]] = 
-                            ($h[$val["taxonomy"]["_match"]["rank"]] ?? 0) + 1;
-                    }
-                }
-            }
-
-            return [ "data" => $d, "count" => $c, "ht_breakdown" => $h ];
+            $this->log(sprintf("distilled %s taxa from masterlist",count($this->taxonList)),self::DATA_MESSAGE,"init");
         }
 
         public function addTaxonomyToTL()
@@ -561,7 +605,7 @@
 
                 if ($key===false)
                 {
-                    $this->log(sprintf("no TTIK match found for taxon %s",$val["taxon"]),self::DATA_ERROR,"TTIK");
+                    $this->log(sprintf("no TTIK match found for taxon %s",$val["taxon"]),self::DATA_ERROR,"TTIK taxonomy");
                     $match=null;
                 }
                 else
@@ -585,8 +629,6 @@
                             "_match"  => array_merge($match,[ "_local_key" => $key ])
                         ];
 
-
-
                     $matched++;
                 }
 
@@ -594,7 +636,7 @@
             }
 
             $this->taxonList = $d;
-            $this->log(sprintf("matched %s masterlist records to a TTIK record",$matched),self::DATA_MESSAGE,"TTIK");
+            $this->log(sprintf("matched %s masterlist records to a TTIK record",$matched),self::DATA_MESSAGE,"TTIK taxonomy");
         }
 
         public function addObjectDataToTL()
@@ -629,16 +671,18 @@
                                 "unitid"=>$match["Registratienummer"],
                                 "exhibition_room"=>$match["Zaal"],
                                 "location"=>$match["Zaaldeel"],
+                                "is_leenobject"=>$match["_is_leenobject"],
+                                "is_brahms"=>$match["_is_brahms"]
                             ];
-                        $this->exhibitionRooms_ML[$this->masterList[$key]["Zaal"]]=$this->masterList[$key]["Zaal"];
+                        $this->exhibitionRooms_ML[]=$match["Zaal"];
                     }
                 }
 
                 $d[]=$val;
-
             }
+
             $this->taxonList = $d;
-            $this->exhibitionRooms_ML=array_values((array)$this->exhibitionRooms_ML);
+            $this->exhibitionRooms_ML=array_filter(array_unique($this->exhibitionRooms_ML));
         }
 
         public function addCRSToTL()
@@ -700,14 +744,21 @@
                 $d=[];
                 foreach ((array)$val["object_data"] as $object)
                 {
-                    $matches = array_filter($this->brahms,function($a) use ($object)
+                    if ($object["is_brahms"])
                     {
-                        return $object["unitid"]==$a["unitid"];
-                    });
+                        $matches = array_filter($this->brahms,function($a) use ($object)
+                        {
+                            return $object["unitid"]==$a["unitid"];
+                        });
+                    }
+                    else
+                    {
+                        $matches=false;
+                    }
 
                     if (!empty($matches))
                     {
-                        // $this->log(sprintf("matched Brahms record %s",$object["unitid"]),self::DATA_ERROR,"Brahms");
+                        $this->log(sprintf("matched object %s to Brahms record",$object["unitid"]),self::DATA_ERROR,"Brahms");
 
                         foreach ($matches as $match)
                         {
@@ -723,6 +774,8 @@
                                         [
                                             "url"=>$match["URL"]
                                         ];
+
+                                    print_r($object);
                                 }
                             }
                         }
@@ -789,6 +842,18 @@
                     $this->unknownRooms["natuurwijzer_room_not_in_masterlist"][]=$val;
                 }
             }
+
+            foreach ([
+                "unknown room in masterlist" => $this->unknownRooms["unknown_room_in_masterlist"],
+                "masterlist room not in natuurwijzer" => $this->unknownRooms["masterlist_room_not_in_natuurwijzer"],
+                "natuurwijzer room not in masterlist" => $this->unknownRooms["natuurwijzer_room_not_in_masterlist"],
+            ] as $key => $value)
+            {
+                if (count((array)$value)>0)
+                {
+                    $this->log(sprintf("$key: %s",implode("; ",$value)),self::DATA_MESSAGE,"rooms");
+                }
+            }
         }
 
         public function addTTIKTextsToTL()
@@ -802,6 +867,7 @@
                 */
                 if (!isset($val["taxonomy"]))
                 {
+                    $this->log(sprintf("no TTIK content for %s",$val["taxon"]),self::DATA_ERROR,"TTIK content");
                     $d[]=$val;
                     continue;
                 }
@@ -830,6 +896,11 @@
                             $val["texts"]["ttik"]=$this->ttik[$key]["description"];
                         }
                     }
+                }
+
+                if (!isset($val["texts"]["ttik"]) || empty($val["texts"]["ttik"]))
+                {
+                    $this->log(sprintf("no TTIK content for %s",$val["taxon"]),self::DATA_ERROR,"TTIK content");
                 }
 
                 $d[]=$val;
@@ -1108,10 +1179,10 @@
 
                         if ($key!==false)
                         {
-                            $val["topstuk"]=$this->topstukken[$key];
+                            $val["topstukken"][]=$this->topstukken[$key];
+                            $this->log(sprintf("added topstukken content to %s",$val["taxon"]),self::DATA_MESSAGE,"topstukken");
                         }
                     }
-
                 }
 
                 $d[]=$val;
@@ -1150,6 +1221,38 @@
             $this->taxonList = $d;
         }
 
+        public function addLeenobjectImages()
+        {
+            $d=[];
+
+            foreach ($this->taxonList as $val)
+            {
+                if ($val["object_data"])
+                {
+                    foreach ($val["object_data"] as $key => $object)
+                    {
+                        if ($object["is_leenobject"])
+                        {
+                            $key = array_search($object["unitid"], array_column($this->leenobjecten, "registratienummer"));
+
+                            if ($key!==false)
+                            {
+                                $val["object_data"][$key]["images"]=
+                                    $this->leenobjecten[$key]["_afbeeldingen"];
+
+                                // $val["object_data"][$key]["images"]=
+                                //     array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
+
+                            }
+                        }
+                    }    
+                }
+
+                $d[]=$val;
+            }
+
+            $this->taxonList = $d;
+        }
 
         public function addImageSquares()
         {
@@ -1350,7 +1453,6 @@
 
         private function _correctUcFirst( $name, $language=null )
         {
-
             $language = $language ?? $this->document["language"];
 
             if ($language!="nl")
@@ -1556,26 +1658,45 @@
                         );
                     }
 
+                    $key = array_search($object["unitid"], array_column($this->leenobjecten, 'registratienummer'));
+
+                    if ($key!==false)
+                    {
+                        $o["data"] = array_merge(
+                            $o["data"],
+                            [[
+                                "label" => "Dit object is een bruikleen van",
+                                "text" =>  $this->leenobjecten[$key]["geleend_van"]
+                            ]]
+                        );
+                    }
+
                     $o["data"] = array_values(array_filter($o["data"], function($a) { return !empty($a["text"]) && $a["text"]!="Not applicable"; }));
 
-                    if (isset($this->rawDocData["topstuk"]) && $this->rawDocData["topstuk"]["_registrationNumber_ic"]==strtolower($object["unitid"]))
+                    if (isset($this->rawDocData["topstukken"]))
                     {
-                        $o["topstuk_link"] = [
-                            "url" => $this->rawDocData["topstuk"]["_full_url"],
-                            "text" => $this->rawDocData["topstuk"]["title"]
-                        ];
 
-                        if (!is_null($potential_topstuk_image))
-                        {
-                            $o["topstuk_link"]["image"] = $potential_topstuk_image["url"];
-                        }
-                        else
-                        {
-                            unset($o["topstuk_link"]);
+                        $key = array_search($object["unitid"], array_column($this->rawDocData["topstukken"], "registrationNumber"));
 
-                            $this->log(
-                                sprintf("no image for topstukken object-link: %s / %s",
-                                    $this->document["titles"]["main"],$object["unitid"]),self::DATA_ERROR,"generator");
+                        if($key!==false)
+                        {
+                            if (!is_null($potential_topstuk_image))
+                            {
+                                $topstuk = $this->rawDocData["topstukken"][$key];
+
+                                $o["topstuk_link"] = [
+                                    "url" => $topstuk["_full_url"],
+                                    "text" => $topstuk["title"]
+                                ];
+
+                                $o["topstuk_link"]["image"] = $potential_topstuk_image["url"];
+                            }
+                            else
+                            {
+                                $this->log(
+                                    sprintf("no image for topstukken object-link: %s / %s",
+                                        $this->document["titles"]["main"],$object["unitid"]),self::DATA_ERROR,"generator");
+                            }
                         }
                     }
 
@@ -1706,13 +1827,22 @@
             }
         }
 
-        private function _checkJsonPaths()
+        private function _checkImageURLs()
         {
-            foreach ($this->jsonPath as $state => $path)
+            foreach ([
+                "squaredImagePlaceholderURL" => $this->squaredImagePlaceholderURL,
+                "squaredImageURLRoot" => $this->squaredImageURLRoot,
+                "leenobjectImageURLRoot" => $this->leenobjectImageURLRoot
+            ] as $key => $url)
             {
-                if (is_null($path))
+                if (is_null($url))
                 {
-                    throw new Exception(sprintf("JSON-path not set: %s",$state), 1);                    
+                    throw new Exception(sprintf("URL not set: %s",$key), 1);
+                }
+                else
+                if (!filter_var($url, FILTER_VALIDATE_URL))
+                {
+                    throw new Exception(sprintf("invalid URL: %s (%s)",$url,$key), 1);
                 }
             }
         }

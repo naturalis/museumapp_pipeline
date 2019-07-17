@@ -12,7 +12,7 @@
 
         public function init()
         {
-            $this->_connectDatabase();
+            $this->connectDatabase();
         }
 
         public function setNatuurwijzer()

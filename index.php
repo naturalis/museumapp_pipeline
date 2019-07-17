@@ -33,6 +33,11 @@
 
     $d->setSQLitePath( "selector", $imgSelectorDbPath );
     $d->setSQLitePath( "squares", $imgSquaresDbPath );
+
+    $d->setSquaredImagePlaceholderURL( "http://145.136.242.65:8080/stubs/placeholder.jpg" );
+    $d->setSquaredImageURLRoot( "http://145.136.242.65:8080/squared_images/" );
+    $d->setLeenobjectImageURLRoot( "http://145.136.242.65:8080/leenobject_images/" );
+
     $d->init();
 
     $d->setMasterList();
@@ -46,6 +51,7 @@
     $d->setExhibitionRooms();
     $d->setImageSelection();
     $d->setImageSquares();
+    $d->setLeenObjecten();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
@@ -104,6 +110,7 @@
         $d->addTopstukkenTextsToTL();
         $d->makeLinksSelection();
         $d->effectuateImageSelection();
+        $d->addLeenobjectImages();
         $d->addImageSquares();
         $d->generateJsonDocuments();
 
@@ -121,9 +128,9 @@
     $imageSelections = $d->getImageSelection();
     $imageSquares = $d->getImageSquares();
     $taxonList = $d->getTaxonList();
+    $leenObjecten = $d->getLeenObjecten();
 
     // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
-    // $ttikMatches = $d->getTaxonListTTIKMatches();
 
     $fPreview = $b->getFileLinks( "preview" );
     $prevQueuedJobs = $s->findEarlierJobs();
@@ -199,6 +206,7 @@ hr {
         [ "label" => "TTIK", "var" => $ttik, "refreshable" => true, "data-source" => "ttik" ],
         [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false ],
         [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false ],
+        [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false ],
     ];
 
     foreach ($sources as $key => $source)
@@ -226,7 +234,7 @@ hr {
 
     if (isset($messages))
     {
-        echo "<i>fouten tijdens genereren bestanden:</i><br />";
+        echo "<i>meldingen tijdens genereren bestanden:</i><br />";
 
         $section=null;
 
@@ -239,28 +247,18 @@ hr {
                     echo "</div>\n";
                 }
                 $section = $val["source"];
-                echo '<span class="section-head '.$section.'" onclick="$(\'div.' . $section . '\').toggle();">' . $section . '</span>';
-                echo '<div class="section '.$section.'"><ul>'."\n";
+                $js_section = str_replace(" ", "_", $section);
+                echo '<span class="section-head '.$js_section.'" onclick="$(\'div.' . $js_section . '\').toggle();">' . $section . '</span>';
+                echo '<div class="section '.$js_section.'"><ul>'."\n";
             }
             
-            if ($val["level"]!=BaseClass::DATA_MESSAGE)
+            // if ($val["level"]!=BaseClass::DATA_MESSAGE)
             {
-                echo '<li class="'.$section.'">',$val["message"],"</li>\n";    
+                echo '<li class="'.$js_section.'">',$val["message"],"</li>\n";    
             }
         }
 
         echo "</div>\n";
-
-        // echo "<i>meldingen tijdens genereren bestanden:</i><br />";
-        // echo "<ul>";
-        // foreach ($messages as $val)
-        // {
-        //     if ($val["level"]==BaseClass::DATA_MESSAGE)
-        //     {
-        //         echo "<li>",$val["message"]," (",$val["source"],")","</li>\n";    
-        //     }
-        // }
-        // echo "</ul>";
     }
 
     if (isset($publishMessage))
