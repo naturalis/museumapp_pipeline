@@ -118,6 +118,7 @@
         const TABLE_TTIK = 'ttik';
         const TABLE_NBA = 'nba';
         const TABLE_LEENOBJECTEN = 'leenobjecten';
+        const TABLE_TAXONLIST = 'taxonlist';
 
         // const TABLE_MASTER_NAME_COL = 'SCname';
         const TABLE_MASTER_NAME_COL = 'SCname controle';
@@ -501,8 +502,8 @@
         public function getImageSelection()
         {
             return [
-                "data" => $this->masterList,
-                "count" => count($this->masterList)
+                "data" => $this->imageSelection,
+                "count" => count($this->imageSelection)
             ];
         }
 
@@ -637,6 +638,22 @@
 
             $this->taxonList = $d;
             $this->log(sprintf("matched %s masterlist records to a TTIK record",$matched),self::DATA_MESSAGE,"TTIK taxonomy");
+        }
+
+        public function saveTaxonList()
+        {
+
+            $this->db->query("truncate " . self::TABLE_TAXONLIST);
+
+            $stmt = $this->db->prepare("insert into ".self::TABLE_TAXONLIST." (taxon,taxonomy) values (?,?)");
+
+            foreach($this->taxonList as $val)
+            {
+                $stmt->bind_param('ss', $val["taxon"], json_encode($val["taxonomy"]));
+                $stmt->execute();
+            }
+
+            $this->log("saved taxonlist",self::DATA_MESSAGE,"TTIK taxonomy");
         }
 
         public function addObjectDataToTL()
@@ -774,8 +791,6 @@
                                         [
                                             "url"=>$match["URL"]
                                         ];
-
-                                    print_r($object);
                                 }
                             }
                         }
@@ -794,25 +809,29 @@
             $d=[];
             foreach ($this->taxonList as $key => $val)
             {
-                $key = array_search($val["taxon"], array_column($this->IUCN, "scientific_name"));
-
-                if ($key===false && isset($val["taxonomy"]) && isset($val["taxonomy"]["_nomen"]))
+                $IUCN = array_filter($this->IUCN,
+                function($a) use ($val)
                 {
-                    $key = array_search($val["taxonomy"]["_nomen"], array_column($this->IUCN, "scientific_name"));
-                }
+                    return 
+                        $a["scientific_name"]==$val["taxon"] ||
+                        (isset($val["taxonomy"]) && isset($val["taxonomy"]["_nomen"]) && $a["scientific_name"]==$val["taxonomy"]["_nomen"]);
+                });
 
-                if ($key===false)
+                if (empty($IUCN))
                 {
                     $this->log(sprintf("no IUCN match found for taxon %s",$val["taxon"]),self::DATA_ERROR,"IUCN");
                 }
                 else
-                {
-                    $val["IUCN"]=
+                {   
+
+                    //  . ($IUCN[0]["region"]!="Global" ? sprintf(" (%s)",$IUCN[0]["region"]) : "" )
+                    
+                    $val["IUCN"] =
                         [
-                            "category"=>$this->IUCN[$key]["category"],
-                            "population_trend"=>$this->IUCN[$key]["population_trend"],
-                            "_category_label"=>$this->IUCN_statusTranslations[$this->IUCN[$key]["category"]],
-                            "_trend_label"=>$this->IUCN_trendTranslations[$this->IUCN[$key]["population_trend"]]
+                            "category" => $IUCN[0]["category"],
+                            "population_trend" => $IUCN[0]["population_trend"],
+                            "_category_label" => $this->IUCN_statusTranslations[$IUCN[0]["category"]],
+                            "_trend_label" => $this->IUCN_trendTranslations[$IUCN[0]["population_trend"]]
                         ];
                 }
                 $d[]=$val;
@@ -1405,6 +1424,7 @@
                 $this->_addDocumentContent();
                 $this->_addDocumentObjects();
                 $this->_addDocumentLinks();
+                $this->_addDocumentDistributionMap();
 
                 if (!$this->_checkMinimumRequirements())
                 {
@@ -1643,6 +1663,8 @@
                     $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
                     $room =  $this->exhibitionRoomsPublic[$room] ?? $room;
 
+                    $o["location"]=$room;
+
                     $o["data"] = [
                         [ "label" => "Registratienummer", "text" => $object["unitid"] ],
                         [ "label" => "Locatie", "text" => $room ]
@@ -1761,11 +1783,29 @@
             {
                 $this->document[$block_name]= [
                     "category" => $this->rawDocData["IUCN"]["category"],
-                    "label" => $this->rawDocData["IUCN"]["_category_label"]
+                    "label" => $this->rawDocData["IUCN"]["_category_label"],
+                    "url_link" => "https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN",
+                    "url_label" => "Lees meer over de beschermingstatus",
                 ];
             }
         }
 
+        private function _addDocumentDistributionMap()
+        {
+            return;
+
+            $block_name="distribution_map";
+
+            unset($this->document[$block_name]);
+
+            // if (isset($this->rawDocData["distribution_map"]))
+            {
+                $this->document[$block_name]= [
+                    "image_url" => "someurl",
+                    "label" => $this->rawDocData["IUCN"]["_category_label"]
+                ];
+            }
+        }
 
         public function getBrahmsUnitIDsFromObjectData()
         {
@@ -1931,25 +1971,55 @@
             }
 
             $d[] = [
+                "label" => "Expeditie",
+                "text" => $event["projectTitle"]
+            ];
+
+            $d[] = [
+                "label" => "Verzamelmethode",
+                "text" => $event["method"]
+            ];
+
+            $d[] = [
+                "label" => "Verzameld op hoogte",
+                "text" => $event["altitude"]
+            ];
+
+            $d[] = [
+                "label" => "Verzameld op diepte",
+                "text" => $event["depth"]
+            ];    
+    
+
+            $d[] = [
+                "label" => "Verzameld in biotoop",
+                "text" => @$event["biotopeText"]
+            ];
+
+            $d[] = [
                 "label" => "Onderdeel/materiaaltype",
-                "text" =>  $document["kindOfUnit"]
+                "text" =>  trim(implode(", ",array_filter([@$event["recordBasis"],@$event["kindOfUnit"],@$event["preparationType"]],function($a) { return !empty($a); })))
             ];
 
             $d[] = [
                 "label" => "Sexe",
-                "text" =>  $document["sex"]
+                "text" =>  @$document["sex"]
             ];
 
             $d[] = [
                 "label" => "Collectienaam",
-                "text" =>  $document["collectionType"]
+                "text" =>  @$document["collectionType"]
             ];
 
             $d[] = [
                 "label" => "Levensfase",
-                "text" =>  $document["phaseOrStage"]
+                "text" =>  @$document["phaseOrStage"]
             ];
 
+            $d[] = [
+                "label" => "Lithostratigrafische formatie",
+                "text" =>  @$event["lithoStratigraphy"]["formation"]
+            ];
 
             if (isset($document["identifications"]))
             {
@@ -2007,8 +2077,8 @@
                     "Collectienaam"=>9,
                 ];
 
-                $a = $order[$a["label"]];
-                $b = $order[$b["label"]];
+                $a = $order[$a["label"]] ?? 99;
+                $b = $order[$b["label"]] ?? 99;
                 return (($a == $b) ? 0 : (($a < $b) ? -1 : 1));
             });
 

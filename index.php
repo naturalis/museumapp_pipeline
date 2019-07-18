@@ -54,6 +54,7 @@
     $d->setLeenObjecten();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
+    $d->saveTaxonList();
     $d->addObjectDataToTL();
 
     $b = new DataBrowser;
@@ -323,8 +324,6 @@ $( document ).ready(function()
 ?>
 </pre>
 </html>
-
-
 <?php
 
 
