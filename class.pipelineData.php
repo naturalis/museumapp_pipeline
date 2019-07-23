@@ -28,8 +28,10 @@
 
         private $softMaxTaxonArticles=5;
         private $hardMaxTotalArticles=8;
+        private $maxNbaFields=[ "taxon" => null, "unitid" => null, "fields" => 0 ];
 
         private $debug_masterListSCnames = [
+            // "Lucanus cervus",
             // "Giraffa reticulata",
             // "Puma concolor",
             // "Abrus precatorius",
@@ -103,6 +105,11 @@
 
         private $topstukkenURLaddOn = [
             "query_param" => "?standalone"
+        ];
+
+        private $iucnURLs = [
+            "general_link" => "https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN",
+            "general_link_label" => "Lees meer over de beschermingsstatus",
         ];
 
         private $squaredImagePlaceholderURL;
@@ -199,6 +206,14 @@
         public function setIUCN()
         {
             $this->IUCN = $this->getMySQLSource(self::TABLE_IUCN);
+            $d=[];
+
+            // taking out double-entries: this should be fixed in the reaper
+            foreach ($this->IUCN as $key => $val)
+            {
+                $d[$val["scientific_name"]."_".$val["region"]]=$val;
+            }
+            $this->IUCN = array_values($d);
             $this->log(sprintf("read %s IUCN entries",count($this->IUCN)),self::DATA_MESSAGE,"init");
         }
 
@@ -699,7 +714,7 @@
             }
 
             $this->taxonList = $d;
-            $this->exhibitionRooms_ML=array_filter(array_unique($this->exhibitionRooms_ML));
+            $this->exhibitionRooms_ML=array_filter(array_unique((array)$this->exhibitionRooms_ML));
         }
 
         public function addCRSToTL()
@@ -809,13 +824,13 @@
             $d=[];
             foreach ($this->taxonList as $key => $val)
             {
-                $IUCN = array_filter($this->IUCN,
-                function($a) use ($val)
-                {
-                    return 
-                        $a["scientific_name"]==$val["taxon"] ||
-                        (isset($val["taxonomy"]) && isset($val["taxonomy"]["_nomen"]) && $a["scientific_name"]==$val["taxonomy"]["_nomen"]);
-                });
+                $IUCN = array_values(array_filter($this->IUCN,
+                    function($a) use ($val)
+                    {
+                        return 
+                            $a["scientific_name"]==$val["taxon"] ||
+                            (isset($val["taxonomy"]) && isset($val["taxonomy"]["_nomen"]) && $a["scientific_name"]==$val["taxonomy"]["_nomen"]);
+                    }));
 
                 if (empty($IUCN))
                 {
@@ -823,15 +838,38 @@
                 }
                 else
                 {   
+                    if (count($IUCN)>1)
+                    {
+                        $key = array_search("Global", array_column($IUCN, "region"));
 
-                    //  . ($IUCN[0]["region"]!="Global" ? sprintf(" (%s)",$IUCN[0]["region"]) : "" )
+                        if ($key===false)
+                        {
+                            $key = array_search("Europe", array_column($IUCN, "region"));
+                        }
+
+                        if ($key===false)
+                        {
+                            $key=0;
+                        }
+                    }
+                    else
+                    {
+                        $key=0;
+                    }
+
+                    $category = $IUCN[$key]["category"];
+                    $population_trend = $IUCN[$key]["population_trend"];
+                    $category_label = $this->IUCN_statusTranslations[$category];
+                    $trend_label = $this->IUCN_trendTranslations[$population_trend];
+                    $name = "Beschermingsstatus" . ($IUCN[$key]["region"]!="Global" ? " (".$IUCN[$key]["region"].")" : "");
                     
                     $val["IUCN"] =
                         [
-                            "category" => $IUCN[0]["category"],
-                            "population_trend" => $IUCN[0]["population_trend"],
-                            "_category_label" => $this->IUCN_statusTranslations[$IUCN[0]["category"]],
-                            "_trend_label" => $this->IUCN_trendTranslations[$IUCN[0]["population_trend"]]
+                            "name" => $name,
+                            "category" => $category,
+                            "population_trend" => $population_trend,
+                            "category_label" => $category_label,
+                            "trend_label" => $trend_label,
                         ];
                 }
                 $d[]=$val;
@@ -1443,7 +1481,16 @@
                 }
 
                 $this->document=[];
-            }                
+            }
+
+            $this->log(
+                sprintf(
+                    "taxon %s, object %s has %s NBA data fields",
+                    $this->maxNbaFields["taxon"],
+                    $this->maxNbaFields["unitid"],
+                    $this->maxNbaFields["fields"]
+                ),self::DATA_MESSAGE,"generator");
+
         }
 
         private function _addDocumentMetaData()
@@ -1669,15 +1716,18 @@
                         [ "label" => "Registratienummer", "text" => $object["unitid"] ],
                         [ "label" => "Locatie", "text" => $room ]
                     ];
+                                
 
                     $key = array_search($object["unitid"], array_column($this->NBA, 'unitid'));
 
                     if ($key!==false)
                     {
-                        $o["data"] = array_merge(
-                            $o["data"],
-                            $this->_distillNBAData($this->NBA[$key]["document"])
-                        );
+                        $nbaData=$this->_distillNBAData($this->NBA[$key]["document"]);
+                        $o["data"] = array_merge($o["data"],$nbaData);
+                        if (count($nbaData)>$this->maxNbaFields["fields"])
+                        {
+                            $this->maxNbaFields=[ "taxon" => $this->rawDocData["taxon"], "unitid" => $object["unitid"], "fields" => count($nbaData) ];
+                        }
                     }
 
                     $key = array_search($object["unitid"], array_column($this->leenobjecten, 'registratienummer'));
@@ -1782,10 +1832,11 @@
             if (isset($this->rawDocData["IUCN"]))
             {
                 $this->document[$block_name]= [
+                    "name" => $this->rawDocData["IUCN"]["name"],
                     "category" => $this->rawDocData["IUCN"]["category"],
-                    "label" => $this->rawDocData["IUCN"]["_category_label"],
-                    "url_link" => "https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN",
-                    "url_label" => "Lees meer over de beschermingstatus",
+                    "label" => $this->rawDocData["IUCN"]["category_label"],
+                    "url_link" => $this->iucnURLs["general_link"],
+                    "url_label" => $this->iucnURLs["general_link_label"],
                 ];
             }
         }
@@ -1848,25 +1899,6 @@
             }
         }
 
-        public function setJsonPath( $state, $path )
-        {
-            if (array_key_exists($state, $this->jsonPath))
-            {
-                if (file_exists($path))
-                {
-                    $this->jsonPath[$state] = rtrim($path,"/") . "/";
-                }
-                else
-                {
-                    throw new Exception(sprintf("JSON-path doesn't exist: %s",$path), 1);                    
-                }
-            }
-            else
-            {
-                throw new Exception(sprintf("unknown JSON state: %s",$state), 1);                    
-            }
-        }
-
         private function _checkImageURLs()
         {
             foreach ([
@@ -1883,18 +1915,6 @@
                 if (!filter_var($url, FILTER_VALIDATE_URL))
                 {
                     throw new Exception(sprintf("invalid URL: %s (%s)",$url,$key), 1);
-                }
-            }
-        }
-
-        private function _deleteAllPreviousJsonFiles( $state )
-        {
-            $files = glob($this->jsonPath[$state] . '*.json');
-            foreach($files as $file)
-            {
-                if(is_file($file))
-                {
-                    unlink($file);
                 }
             }
         }
@@ -2061,6 +2081,8 @@
                     "text" =>  $associatedMineralName
                 ];
             }
+
+            $d = array_values(array_filter($d, function($a) { return !empty($a["text"]) && $a["text"]!="Not applicable"; }));
 
             uasort($d,function($a,$b)
             {

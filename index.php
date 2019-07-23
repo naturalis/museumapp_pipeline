@@ -56,6 +56,9 @@
     $d->addTaxonomyToTL();
     $d->saveTaxonList();
     $d->addObjectDataToTL();
+    $d->addCRSToTL();
+    $d->addBrahmsToTL();
+    $d->addIUCNToTL();
 
     $b = new DataBrowser;
 
@@ -102,9 +105,6 @@
 
         set_time_limit(300);
 
-        $d->addCRSToTL();
-        $d->addBrahmsToTL();
-        $d->addIUCNToTL();
         $d->resolveExhibitionRooms();
         $d->addTTIKTextsToTL();
         $d->addNatuurwijzerTextsToTL();

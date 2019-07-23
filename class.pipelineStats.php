@@ -17,7 +17,7 @@
 
         public function setNatuurwijzer()
         {
-            $this->natuurwijzer = $this->_getMySQLSource(self::TABLE_NATUURWIJZER);
+            $this->natuurwijzer = $this->getMySQLSource(self::TABLE_NATUURWIJZER);
 
             $d=[];
             foreach ($this->natuurwijzer as $key => $val)
