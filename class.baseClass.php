@@ -6,6 +6,7 @@
         public $db_credentials;
         public $db;
         public $jsonPath = [ "preview" => null, "publish" => null ];
+        public $SQLitePath = [ "selector" => null, "squares" => null, "management" => null  ];
         private $messages=[];
 
         const DATA_MESSAGE = 1;        
@@ -28,6 +29,25 @@
             else
             {
                 throw new Exception(sprintf("unknown JSON state: %s",$state), 1);                    
+            }
+        }
+
+        public function setSQLitePath( $source, $path )
+        {
+            if (array_key_exists($source, $this->SQLitePath))
+            {
+                if (file_exists($path))
+                {
+                    $this->SQLitePath[$source] = $path;
+                }
+                else
+                {
+                    throw new Exception(sprintf("SQLite path doesn't exist: %s",$path), 1);                    
+                }
+            }
+            else
+            {
+                throw new Exception(sprintf("unknown SQLite source: %s",$source), 1);                    
             }
         }
 

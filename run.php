@@ -1,5 +1,11 @@
 <?php
 
+    if (PHP_SAPI !== 'cli')
+    {
+        echo "this program must be run from the command line\n";
+        exit(0);
+    }
+      
     $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
     $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
     $db["pass"] = isset($_ENV["MYSQL_ROOT_PASSWORD"]) ? $_ENV["MYSQL_ROOT_PASSWORD"] : 'root';
@@ -11,121 +17,98 @@
     $imgSquaresDbPath = 
         isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : '/data/image_squares/square_images.db';
 
+    $documentHashesDbPath = 
+        isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : '/data/document_hashes/document_hashes.db';
+
+    $managementDataDbPath = 
+        isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : '/data/management_data/management_data.db';
+
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
+    $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
+
+
+    $generateFiles=true;
+    
+    if (getopt("",["generate-files:"]))
+    {
+        $generateFiles = getopt("",["generate-files:"])["generate-files"]!='0';
+        // to just create the taxon list: php run.php --generate-files=0 
+    }
 
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
 
+    set_time_limit(3000);
+
     $d = new PipelineData;
 
     $d->setDatabaseCredentials( $db );
-
     $d->setJsonPath( "preview", $jsonPreviewPath );
     $d->setJsonPath( "publish", $jsonPublishPath );
-
     $d->setSQLitePath( "selector", $imgSelectorDbPath );
     $d->setSQLitePath( "squares", $imgSquaresDbPath );
+    $d->setSQLitePath( "management", $managementDataDbPath );
+    $d->setSquaredImagePlaceholderURL( "http://145.136.242.65:8080/stubs/placeholder.jpg" );
+    $d->setSquaredImageURLRoot( "http://145.136.242.65:8080/squared_images/" );
+    $d->setLeenobjectImageURLRoot( "http://145.136.242.65:8080/leenobject_images/" );
+
     $d->init();
 
     $d->setMasterList();
     $d->setCRS();
+    $d->setBrahms();
     $d->setIUCN();
     $d->setNatuurwijzer();
     $d->setTopstukken();
     $d->setTTIK();
+    $d->setNBA();
     $d->setExhibitionRooms();
     $d->setImageSelection();
-    $d->setImageSquares();  // STUB
-
+    $d->setImageSquares();
+    $d->setLeenObjecten();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
-    $d->addObjectDataToTL();
-    $d->addCRSToTL();
-    $d->addIUCNToTL();
+    $d->saveTaxonList();
 
-    $d->resolveExhibitionRooms();
-
-    $d->addTTIKTextsToTL();
-    $d->addNatuurwijzerTextsToTL();
-    $d->addTopstukkenTextsToTL();
-    $d->makeLinksSelection();
-
-    $d->effectuateImageSelection();
-    // $d->addImageSquares();  // STUB
-
-
-    $d->generateJsonDocuments();
-
-
-/*
-
-    // banner image
-    if (isset($data["header_image"]))
+    if ($generateFiles)
     {
-        $d["header_image"] = $data["header_image"];
+        $d->addObjectDataToTL();
+        $d->addCRSToTL();
+        $d->addBrahmsToTL();
+        $d->addIUCNToTL();
+        $d->resolveExhibitionRooms();
+        $d->addTTIKTextsToTL();
+        $d->addNatuurwijzerTextsToTL();
+        $d->addTopstukkenTextsToTL();
+        $d->makeLinksSelection();
+        $d->effectuateImageSelection();
+        $d->addLeenobjectImages();
+        $d->addImageSquares();
+        $d->generateJsonDocuments();        
+    }
+    else
+    {
+        echo "skipping generating files\n";
     }
 
+    foreach ($d->getMessages() as $val)
+    {
+        echo $val["message"]," (",$val["source"],"; ",$val["level"],")\n";
+    }
 
+    echo "done\n";
 
-    $d->addBrahmsDataToTL(); // STUB
-    $d->addNBADataToTL();  // STUB
-
-
-
-    checks:
-    - taxonlist:
-        no nomen
-        no FSN
-        what elese is mandatory?
-    - $this->unknownRooms);
-- not saved files
-- unlilekely taxon names
-    
-CHECK NOMEN BIJ EEN ONDERSOORT
-MORE NBA-DATA
-publishable Zaalnamen
-controleer topstuk in publish
-    $this->getBrahmsUnitIDsFromObjectData();
-
-    use CRS for full sci name if missing?
-
-    use extra topstuk data for object info
-
-    IUCN maps
-
-
-*/
-
-
-
-
-
-/*
-    $d->setImageSelection();    
-    $d->setImageSquares();
-*/
-
-
-
-
-
-
-/*
-
-    
-    select data
-    create documents
-    write documents(draft)
-    serve draft documents
-    reject documents
-    publish documents
-    set elastic busy
-    set documents(state=old)
-    import documents(state=published)
-    delete documents(state=old)
-    set elastic ready
-
-    toggle harvesters
-
-*/
+    // $masterList = $d->getMasterList();
+    // $crs = $d->getCRS();
+    // $iucn = $d->getIUCN();
+    // $nba = $d->getNBA();
+    // $brahms = $d->getBrahms();
+    // $natuurwijzer = $d->getNatuurwijzer();
+    // $topstukken = $d->getTopstukken();
+    // $ttik = $d->getTtik();
+    // $imageSelections = $d->getImageSelection();
+    // $imageSquares = $d->getImageSquares();
+    // $taxonList = $d->getTaxonList();
+    // $leenObjecten = $d->getLeenObjecten();
+    // // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();

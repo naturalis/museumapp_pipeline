@@ -8,14 +8,18 @@
             "query_param" => "?standalone"
         ];
 
-        const TABLE_NATUURWIJZER = 'natuurwijzer';
+        private $metric="leerobjecten";
 
+        const TABLE_NATUURWIJZER = 'natuurwijzer';
+        const TABLE_TAXONLIST = 'taxonlist';
+        const TABLE_TTIK = 'ttik';
+        
         public function init()
         {
             $this->connectDatabase();
         }
 
-        public function setNatuurwijzer()
+        public function getLeerobjecten()
         {
             $this->natuurwijzer = $this->getMySQLSource(self::TABLE_NATUURWIJZER);
 
@@ -42,16 +46,73 @@
                 $d[$val["title"]]=$val;
             }
 
+            usort($d, function($a,$b)
+            {
+                return $a["title"] > $b["title"];
+            });
+
             $this->natuurwijzer = array_values($d);
-        }
 
-
-        public function getNatuurwijzer()
-        {
             return [
                 "data" => $this->natuurwijzer,
                 "count" => count($this->natuurwijzer),
                 "harvest_date" => $this->natuurwijzer[0]["inserted"]
             ];
         }
+
+
+        public function getTaxa()
+        {
+            $nw_links = json_decode($this->getManagementData( "nw-dekking" ),true);
+
+            $this->taxonlist = $this->getMySQLSource(self::TABLE_TAXONLIST);
+            $d=[];
+            foreach ($this->taxonlist as $val)
+            {
+                $key = array_search($val["taxon"], array_column($nw_links, "taxon"));
+
+                if ($key!==false)
+                {
+                    $val = [ "taxon" => $val["taxon"], "links" => $nw_links[$key]["links"] ];
+                }
+
+                $d[]=$val;
+            }
+            
+            return $d;
+
+        }
+
+        public function getManagementData( $type )
+        {
+            $db = new SQLite3($this->SQLitePath["management"], SQLITE3_OPEN_READWRITE);
+
+            if ($type=="nw-dekking")
+            {
+                $sql = $db->prepare('SELECT * FROM natuurwijzer_dekking');
+                $results = $sql->execute();
+                $d=[];
+                while($row = $results->fetchArray())
+                {
+                    $d[]=[ "taxon" => $row["taxon"], "links" => json_decode($row["links"]) ];
+                }
+            }
+            else
+            if ($type=="ttik-content-dekking")
+            {
+                $sql = $db->prepare('SELECT * FROM ttik_content_dekking');
+                $results = $sql->execute();
+                $d=[];
+                while($row = $results->fetchArray())
+                {
+                    $d[]=[ "taxon" => $row["taxon"], "status" => $row["status"] ];
+                }
+            }
+
+
+            $db->close();
+            return json_encode($d);
+
+        }
+
     }

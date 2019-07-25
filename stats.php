@@ -13,13 +13,8 @@
 
     $d->setDatabaseCredentials( $db );
     $d->init();
-    $d->setNatuurwijzer();
-    $articles = $d->getNatuurwijzer();
+    $articles = $d->getLeerobjecten();
 
-    usort($articles["data"], function($a,$b)
-    {
-        return $a["title"] > $b["title"];
-    });
 ?>
 
 <html>
@@ -35,7 +30,11 @@ table tr td {
 }    
 table tr:hover {
     background-color: #eee;
-}    
+}
+
+table tr:nth-child(even) {background: #efefef}
+table tr:nth-child(odd) {background: #FFF}
+
 table tr td.header {
     background-color: #ddd;
     height: 40px !important;
@@ -47,14 +46,16 @@ table tr td.divider {
 }
 </style>
 <body>
+    <p>
+        <a href="stats2.php">taxa</a>
+    </p>
 
     <h3>Natuurwijzerleerobjecten</h3>
-
-    <table>
+   
 <?php
 
-    echo
-        "<tr>
+    echo "<table>
+        <tr>
             <td class=\"header divider\">#</td>
             <td class=\"header divider\">leerobject</a></td>
             <td class=\"header divider\">gekoppelde taxa</td>
@@ -72,7 +73,8 @@ table tr td.divider {
             </tr>","\n";
     }
 
+    echo "</table>";        
+
 ?>
-    </table>
 </body>
 </html>

@@ -14,11 +14,14 @@
     $documentHashesDbPath = 
         isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : '/data/document_hashes/document_hashes.db';
 
+    $managementDataDbPath = 
+        isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : '/data/management_data/management_data.db';
+
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-    include_once("auth.php");
+    include_once('auth.php');
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
     include_once('class.dataBrowser.php');
@@ -33,6 +36,7 @@
 
     $d->setSQLitePath( "selector", $imgSelectorDbPath );
     $d->setSQLitePath( "squares", $imgSquaresDbPath );
+    $d->setSQLitePath( "management", $managementDataDbPath );
 
     $d->setSquaredImagePlaceholderURL( "http://145.136.242.65:8080/stubs/placeholder.jpg" );
     $d->setSquaredImageURLRoot( "http://145.136.242.65:8080/squared_images/" );
@@ -64,7 +68,7 @@
 
     $b->setJsonPath( "preview", $jsonPreviewPath );
     $b->setJsonPath( "publish", $jsonPublishPath );
-    $b->setSQLitePath( $documentHashesDbPath );
+    $b->setLocalSQLitePath( $documentHashesDbPath );
 
     $s = new PipelineJobQueuer;
 
@@ -170,7 +174,7 @@ tr.titles td {
     font-weight: bold;
     background-color: #eee;
 }
-td.harvest {
+td.harvest, td.explain {
     font-size: 10px;
 }
 div.section {
@@ -196,31 +200,31 @@ hr {
     echo '<tr class="titles"><td>bron</td><td>#</td><td class="harvest" colspan=2>harvest date</td></tr>',"\n";
 
     $sources = [
-        [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "data-source" => "masterList" ],
-        [ "label" => "Taxa", "var" => $taxonList, "refreshable" => false ],
-        [ "label" => "CRS", "var" => $crs, "refreshable" => true, "data-source" => "CRS" ],
-        [ "label" => "Brahms", "var" => $brahms, "refreshable" => false ],
-        [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "data-source" => "IUCN" ],
-        [ "label" => "NBA", "var" => $nba, "refreshable" => true, "data-source" => "NBA" ],
-        [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "data-source" => "natuurwijzer" ],
-        [ "label" => "Topstukken", "var" => $topstukken, "refreshable" => true, "data-source" => "topstukken" ],
-        [ "label" => "TTIK", "var" => $ttik, "refreshable" => true, "data-source" => "ttik" ],
-        [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false ],
-        [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false ],
-        [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false ],
+        [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "data-source" => "masterList", "explain" => "unieke objecten in de masterlist" ],
+        [ "label" => "Taxa", "var" => $taxonList, "refreshable" => false, "explain" => "unieke taxa in de masterlist" ],
+        [ "label" => "CRS", "var" => $crs, "refreshable" => true, "data-source" => "CRS", "explain" => "afbeeldingen uit het CRS" ],
+        [ "label" => "Brahms", "var" => $brahms, "refreshable" => false, "explain" => "afbeeldingen uit Brahms"  ],
+        [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "data-source" => "IUCN", "explain" => "IUCN statussen (klein aantal soorten heeft meer dan één status)" ],
+        [ "label" => "NBA", "var" => $nba, "refreshable" => true, "data-source" => "NBA", "explain" => "NBA-records, één per object" ],
+        [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "data-source" => "natuurwijzer", "explain" => "unieke natuurwijzer-artikelen getagged met zaal en/of taxon" ],
+        [ "label" => "Topstukken", "var" => $topstukken, "refreshable" => true, "data-source" => "topstukken", "explain" => "topstuk-objecten" ],
+        [ "label" => "TTIK", "var" => $ttik, "refreshable" => true, "data-source" => "ttik", "explain" => "ttik-records, één per (hoger) taxon" ],
+        [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false, "explain" => "objecten met geordende afbeeldingselecties" ],
+        [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false, "explain" => "objecten met gegenereerde vierkante 'soortsfoto'" ],
+        [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
     ];
 
     foreach ($sources as $key => $source)
     {
         echo sprintf(
-            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td></tr>'."\n",
+            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td><td class="harvest">%s</td></tr>'."\n",
             $source["label"],
             $source["var"]["count"],
             ($source["var"]["harvest_date"] ?? ""),
-            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>')
+            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>'),
+            $source["explain"]
         );
     }
-
     echo '<tr><td colspan="3">&nbsp;</td></tr>',"\n";
     echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a href="browse.php">browse</a></td></tr>',"\n";
 ?>
@@ -324,48 +328,7 @@ $( document ).ready(function()
 ?>
 </pre>
 </html>
-<?php
 
-
-
-/*
-
-    // banner image
-    if (isset($data["header_image"]))
-    {
-        $d["header_image"] = $data["header_image"];
-    }
-
-
-
-    $d->addBrahmsDataToTL(); // STUB
-    $d->addNBADataToTL();  // STUB
-
-
-
-    checks:
-    - taxonlist:
-        no nomen
-        no FSN
-        what elese is mandatory?
-    - $this->unknownRooms);
-- not saved files
-- unlilekely taxon names
-    
-CHECK NOMEN BIJ EEN ONDERSOORT
-MORE NBA-DATA
-publishable Zaalnamen
-controleer topstuk in publish
-    
-
-    use CRS for full sci name if missing?
-
-    use extra topstuk data for object info
-
-    IUCN maps
-
-
-*/
 
 
 

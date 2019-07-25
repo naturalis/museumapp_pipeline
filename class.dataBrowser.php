@@ -18,16 +18,16 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
     {
         private $files=[];
         private $state;
-        private $SQLitePath;
+        private $localSQLitePath;
 
         public function init()
         {
             $this->checkJsonPaths();   
         }
 
-        public function setSQLitePath( $path )
+        public function setLocalSQLitePath( $path )
         {
-            $this->SQLitePath = $path;
+            $this->localSQLitePath = $path;
         }
 
         public function getFileLinks( $state, $offset=0, $length=100 )
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
 
         private function _initializeSQLite()
         {
-            $this->db = new SQLite3($this->SQLitePath, SQLITE3_OPEN_READWRITE);
+            $this->db = new SQLite3($this->localSQLitePath, SQLITE3_OPEN_READWRITE);
         }
 
         private function _getCurrentRecord( $key, $language )
