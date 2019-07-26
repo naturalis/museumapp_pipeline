@@ -21,6 +21,8 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
+    $debug = isset($_ENV["PIPELINE_DEBUG"]) ? $_ENV["PIPELINE_DEBUG"]=="1" : false;
+
     include_once('auth.php');
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
@@ -29,6 +31,7 @@
 
     $d = new PipelineData;
 
+    $d->setDebug( $debug );
     $d->setDatabaseCredentials( $db );
 
     $d->setJsonPath( "preview", $jsonPreviewPath );
@@ -56,10 +59,11 @@
     $d->setImageSelection();
     $d->setImageSquares();
     $d->setLeenObjecten();
+    $d->setFavourites();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
-    $d->saveTaxonList();
     $d->addObjectDataToTL();
+    $d->saveTaxonList();
     $d->addCRSToTL();
     $d->addBrahmsToTL();
     $d->addIUCNToTL();
@@ -117,7 +121,9 @@
         $d->effectuateImageSelection();
         $d->addLeenobjectImages();
         $d->addImageSquares();
+        $d->addFavourites();
         $d->generateJsonDocuments();
+        $d->cleanUp();
 
         $messages = $d->getMessages();
     }
@@ -134,6 +140,7 @@
     $imageSquares = $d->getImageSquares();
     $taxonList = $d->getTaxonList();
     $leenObjecten = $d->getLeenObjecten();
+    $favourites = $d->getFavourites();
 
     // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
 
@@ -212,6 +219,7 @@ hr {
         [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false, "explain" => "objecten met geordende afbeeldingselecties" ],
         [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false, "explain" => "objecten met gegenereerde vierkante 'soortsfoto'" ],
         [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
+        [ "label" => "Favourites", "var" => $favourites, "refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
     ];
 
     foreach ($sources as $key => $source)

@@ -27,7 +27,6 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-
     $generateFiles=true;
     
     if (getopt("",["generate-files:"]))
@@ -67,13 +66,14 @@
     $d->setImageSelection();
     $d->setImageSquares();
     $d->setLeenObjecten();
+    $d->setFavourites();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
+    $d->addObjectDataToTL();
     $d->saveTaxonList();
 
     if ($generateFiles)
     {
-        $d->addObjectDataToTL();
         $d->addCRSToTL();
         $d->addBrahmsToTL();
         $d->addIUCNToTL();
@@ -85,7 +85,9 @@
         $d->effectuateImageSelection();
         $d->addLeenobjectImages();
         $d->addImageSquares();
-        $d->generateJsonDocuments();        
+        $d->addFavourites();
+        $d->generateJsonDocuments();
+        $d->cleanUp();
     }
     else
     {
@@ -111,4 +113,5 @@
     // $imageSquares = $d->getImageSquares();
     // $taxonList = $d->getTaxonList();
     // $leenObjecten = $d->getLeenObjecten();
+    // $favourites = $d->getFavourites();
     // // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();

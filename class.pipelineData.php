@@ -13,6 +13,7 @@
         private $imageSelection;
         private $imageSquares;
         private $leenobjecten;
+        private $favourites;
         private $exhibitionRooms_NW;
         private $exhibitionRooms_ML;
         private $overallTextOccurrences=[];
@@ -32,21 +33,32 @@
 
         private $debug = false;
         private $debug_masterListSCnames = [
-            "Accipiter nisus",
-            "Triceratops spec.",
-            "turf",
-            "Lucanus cervus",
-            "Giraffa reticulata",
-            "Puma concolor",
-            "Abrus precatorius",
-            "Aschiphasma annulipes Westwood, 1834",
-            "Amazilia fimbriata",
-            "Chrysolampis mosquitus",
-            "Colibri coruscans",
-            "Pelophylax klepton esculentus",
-            "Pelophylax spec.",
-            "Ursus maritimus",
-            "Canis lupus"
+            "Ursus arctos syriacus",
+            // "rutiel",
+            // "Mesolimulus walchi",
+            // "Accipiter nisus",
+            // "Triceratops spec.",
+            // "agaat",
+            // "amazoniet",
+            // "turf",
+            // "Lucanus cervus",
+            // "Giraffa reticulata",
+            // "Puma concolor",
+            // "Abrus precatorius",
+            // "Aschiphasma annulipes Westwood, 1834",
+            // "Amazilia fimbriata",
+            // "Chrysolampis mosquitus",
+            // "Colibri coruscans",
+            // "Pelophylax klepton esculentus",
+            // "Pelophylax spec.",
+            // "Ursus maritimus",
+            // "Canis lupus",
+            // "Falco vespertinus",
+            // "Erythrura gouldiae",
+            // "Tursiops truncatus",
+            // "Cnemidophorus lemniscatus",
+            // "Polyplectron bicalcaratum",
+            // "Rhea americana",
         ];
 
         // https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN
@@ -132,6 +144,7 @@
         const TABLE_TTIK = 'ttik';
         const TABLE_NBA = 'nba';
         const TABLE_LEENOBJECTEN = 'leenobjecten';
+        const TABLE_FAVOURITES = 'favourites';
         const TABLE_TAXONLIST = 'taxonlist';
 
         // const TABLE_MASTER_NAME_COL = 'SCname';
@@ -144,6 +157,11 @@
             $this->checkJsonPaths();
             $this->_checkImageURLs();
             $this->connectDatabase();
+        }
+
+        public function setDebug( $state )
+        {
+            $this->debug = $state;
         }
 
         public function setSquaredImagePlaceholderURL( $url )
@@ -237,10 +255,15 @@
                     continue;
                 }
                 // TODO: taking out double-entries: this should be fixed in the reaper
-                $d[$val["unitid"]]=[ "unitid" => $val["unitid"], "document"  => json_decode($val["document"],true) ];
+                $d[$val["unitid"]]=[
+                    "unitid" => $val["unitid"],
+                    "collection"  => $val["collection"],
+                    "document"  => json_decode($val["document"],true)
+                ];
             }
 
             $this->NBA = array_values($d);
+
             $this->log(sprintf("read %s NBA entries",count($this->NBA)),self::DATA_MESSAGE,"init");
         }
 
@@ -419,7 +442,6 @@
                 $this->imageSquares[]=[
                     "scientific_name" => $row["scientific_name"],
                     "_scientific_name_ic" => strtolower($row["scientific_name"]),
-                    "unitid" => $row["unitid"],
                     "filename" => $row["filename"]
                 ];
             }
@@ -445,6 +467,21 @@
             $this->log(sprintf("found %s leenobjecten entries",count($this->leenobjecten)),self::DATA_MESSAGE,"init");
         }
 
+        public function setFavourites()
+        {
+            $this->favourites = $this->getMySQLSource(self::TABLE_FAVOURITES);
+
+            $this->favourites =
+                array_map(function($a)
+                {
+                    $a["rank"]=(int)$a["rank"];
+                    $a["_taxon_ic"]=strtolower($a["taxon"]);
+                    $a["_assigned"]=false;
+                    return $a;
+                },$this->favourites);
+
+            $this->log(sprintf("found %s favourites",count($this->favourites)),self::DATA_MESSAGE,"init");
+        }
 
         public function getMasterList()
         {
@@ -479,6 +516,16 @@
                 "data" => $this->leenobjecten,
                 "count" => count($this->leenobjecten),
                 "harvest_date" => $this->leenobjecten[0]["inserted"]
+            ];
+        }
+
+
+        public function getFavourites()
+        {
+            return [
+                "data" => $this->favourites,
+                "count" => count($this->favourites),
+                "harvest_date" => $this->favourites[0]["inserted"]
             ];
         }
 
@@ -671,14 +718,28 @@
 
         public function saveTaxonList()
         {
-
             $this->db->query("truncate " . self::TABLE_TAXONLIST);
 
-            $stmt = $this->db->prepare("insert into ".self::TABLE_TAXONLIST." (taxon,taxonomy) values (?,?)");
+            // $stmt = $this->db->prepare("insert into ".self::TABLE_TAXONLIST." (taxon,taxonomy) values (?,?)");
+            $stmt = $this->db->prepare("insert into ".self::TABLE_TAXONLIST." (taxon,collection) values (?,?)");
 
             foreach($this->taxonList as $val)
             {
-                $stmt->bind_param('ss', $val["taxon"], json_encode($val["taxonomy"]));
+                if (isset($val["object_data"]))
+                {
+                    $key = array_search($val["object_data"][0]["unitid"],array_column($this->NBA, "unitid"));
+                    if ($key!==false)
+                    {
+                        $collection = $this->NBA[$key]["collection"];
+                    }
+                    else
+                    {
+                        $collection = "?";                        
+                    }
+                }
+
+                // $stmt->bind_param('ss', $val["taxon"], json_encode($val["taxonomy"]));
+                $stmt->bind_param('ss', $val["taxon"], $collection);
                 $stmt->execute();
             }
 
@@ -978,6 +1039,11 @@
                 }
                 else
                 {
+                    foreach ($val["texts"]["ttik"] as $tKey => $tVal)
+                    {
+                        $val["texts"]["ttik"][$tKey]["body"] = $this->_reformatFormatting($tVal["body"]);
+                    }
+                    
                     $log[] = [ "taxon" => $val["taxon"], "status" => "got content" ];
                 }
 
@@ -1030,17 +1096,16 @@
                             return false;
                         }
 
-                        if (array_search($needle_nomen, $a["_taxon"])!==false)
+                        if (array_search($needle_taxon, $a["_taxon"])!==false)
                         {
                             return true;
                         }
 
-                        return array_search($needle_taxon, $a["_taxon"])!==false;
+                        return array_search($needle_nomen, $a["_taxon"])!==false;
                     }
                 );
 
                 $used_ids = array_values(array_map(function($a) { return $a["id"];} , $matched_on_taxon));
-
 
                 if (!empty($val["taxonomy"]["synonyms"]))
                 {
@@ -1077,13 +1142,15 @@
                 // matching on higher classification
                 if ((count($matched_on_taxon)+count($matched_on_synonym))<$this->maxTaxonArticles && isset($val["taxonomy"]["classification"]))
                 {
+
                     foreach (array_slice(array_reverse($val["taxonomy"]["classification"]), 1, null) as $hKey=>$hVal)
                     {
                         $needle_nomen = $hVal["taxon"];
+                        $needle_taxon = trim($hVal["taxon"] . ' ' . $hVal["authorship"]);
 
                         $matched_on_classification[$hKey] = array_filter(
                             $this->natuurwijzer,
-                            function($a) use ($needle_nomen,&$used_ids)
+                            function($a) use ($needle_nomen,$needle_taxon,&$used_ids)
                             {
                                 if (!isset($a["_taxon"]))
                                 {
@@ -1091,6 +1158,13 @@
                                 }
 
                                 $key = array_search($needle_nomen, $a["_taxon"]);
+
+                                if ($key===false && ($needle_nomen==$needle_taxon))
+                                {
+                                    return false;
+                                }
+
+                                $key = array_search($needle_taxon, $a["_taxon"]);
 
                                 if ($key===false)
                                 {
@@ -1265,7 +1339,7 @@
                         if ($key!==false)
                         {
                             $val["topstukken"][]=$this->topstukken[$key];
-                            $this->log(sprintf("added topstukken content to %s",$val["taxon"]),self::DATA_MESSAGE,"topstukken");
+                            $this->log(sprintf("added topstukken content to '%s'",$val["taxon"]),self::DATA_MESSAGE,"topstukken");
                         }
                     }
                 }
@@ -1345,7 +1419,6 @@
 
             foreach ($this->taxonList as $val)
             {
-
                 if (isset($val["taxonomy"]))
                 {
                     $needle_taxon = $val["taxonomy"]["_taxon_ic"];
@@ -1354,8 +1427,8 @@
                 else
                 {
                     $needle_taxon = strtolower($val["taxon"]);
+                    $needle_nomen = null;
                 }
-
 
                 $key = array_search($needle_taxon, array_column($this->imageSquares, "_scientific_name_ic"));
 
@@ -1364,7 +1437,7 @@
                     $key = array_search($needle_nomen, array_column($this->imageSquares, "_scientific_name_ic"));
                 }
 
-                if ($key)
+                if ($key!==false)
                 {
                     $val["image_square"] = $this->imageSquares[$key];
                 }
@@ -1374,7 +1447,37 @@
             }
 
             $this->taxonList = $d;
+        }
 
+        public function addFavourites()
+        {
+            $d=[];
+
+            foreach ($this->taxonList as $val)
+            {
+                if (isset($val["taxonomy"]))
+                {
+                    $needle = $val["taxonomy"]["_nomen_ic"];
+                }
+                else
+                {
+                    $needle = strtolower($val["taxon"]);
+                }
+
+                $key = array_search($needle, array_column($this->favourites, "_taxon_ic"));
+
+                if ($key!==false)
+                {
+                    $val["favourite"] = [ "rank" => $this->favourites[$key]["rank"] ];
+                    $this->favourites[$key]["_assigned"]=true;
+                    $this->log(sprintf("added favourite rank %s for '%s'",$this->favourites[$key]["rank"],$val["taxon"]),self::DATA_MESSAGE,"favourites");
+                }
+    
+                $d[]=$val;
+
+            }
+
+            $this->taxonList = $d;
         }
 
         public function makeLinksSelection()
@@ -1493,13 +1596,14 @@
             {
                 if (!isset($val["taxon"]) || empty($val["taxon"]))
                 {
-                    $this->log("skipping taxonList-item without taxon-value ",self::DATA_ERROR,"generator");
+                    $this->log("skipping taxonList-item without taxon-value",self::DATA_ERROR,"generator");
                     continue;
                 }
 
                 $this->rawDocData = $val;
 
                 $this->_addDocumentMetaData();
+                $this->_addDocumentFavouriteRank();
                 $this->_addDocumentHeaderImage();
                 $this->_addDocumentTitles();
                 $this->_addDocumentDefinitionsBlock();
@@ -1538,20 +1642,29 @@
 
         }
 
+        public function cleanUp()
+        {
+            foreach ($this->favourites as $key => $val)
+            {
+                if ($val["_assigned"]==false)
+                {
+                    $this->log(sprintf("favourite '%s' with rank %s remained unassigned",$val["taxon"],$val["rank"]),self::DATA_ERROR,"clean-up");
+                }
+            }
+        }
+
         private function _addDocumentMetaData()
         {
             $this->document["id"] = $this->documentId++;
             $this->document["created"] = $this->dateStamp;
             $this->document["last_modified"] = $this->dateStamp;
             $this->document["language"] = $this->languageDefault;
-            $this->document["_key"] = str_replace(" ", "_", strtolower($this->rawDocData["taxon"]));
+            $this->document["_key"] = str_replace([" ","."], "_", strtolower($this->rawDocData["taxon"]));
         }
 
         private function _addDocumentHeaderImage()
         {
             $block_name="header_image";
-
-            $val["image_square"] = $this->imageSquares[$key];
 
             if (isset($this->rawDocData["image_square"]))
             {
@@ -1600,6 +1713,11 @@
                 $this->document[$block_name]["page"] = $dutchName ?? $sciName;
                 $this->document[$block_name]["main"] = $dutchName ?? $sciName;
                 $this->document[$block_name]["sub"] = is_null($dutchName) ? "" : $sciName;
+
+                if ($this->document[$block_name]["main"]==$this->document[$block_name]["sub"])
+                {
+                    $this->document[$block_name]["sub"]="";
+                }
 
                 foreach (["page","main","sub"] as $type)
                 {
@@ -1650,7 +1768,7 @@
                     {
                         $this->document[$block_name]["items"][]=
                             [ "label" => ($val["title"]=="Leefgebied" ? "Waar" : "Wanneer"),
-                              "text" => $val["body"]
+                              "text" => $this->_reformatFormatting($val["body"])
                             ];
                     }
                 }
@@ -1769,7 +1887,7 @@
                         [ "label" => "Locatie", "text" => $room ]
                     ];
 
-                    $key = array_search($object["unitid"], array_column($this->NBA, 'unitid'));
+                    $key = array_search((array)$object["unitid"], array_column((array)$this->NBA, 'unitid'));
 
                     if ($key!==false)
                     {
@@ -1801,7 +1919,7 @@
 
                         $key = array_search($object["unitid"], array_column($this->rawDocData["topstukken"], "registrationNumber"));
 
-                        if($key!==false)
+                        if ($key!==false)
                         {
                             if (!is_null($potential_topstuk_image))
                             {
@@ -1906,6 +2024,16 @@
                     "image_url" => "someurl",
                     "label" => $this->rawDocData["IUCN"]["_category_label"]
                 ];
+            }
+        }
+
+        private function _addDocumentFavouriteRank()
+        {
+            $block_name="favourites_rank";
+
+            if (isset($this->rawDocData["favourite"]))
+            {
+                $this->document[$block_name] = $this->rawDocData["favourite"]["rank"];
             }
         }
 
@@ -2139,6 +2267,18 @@
             return $d;
         }
 
+        private function _reformatFormatting( $content, $strip_remaining_html = true )
+        {
+            foreach ([ "i" => "i", "u" => "u", "b" => "b" , "em" => "i" ] as $key => $val)
+            {
+                $content = str_replace(
+                    [ '<'.$key.'>', '</'.$key.'>', '<\/'.$key.'>' ],
+                    [ '['.$val.']','[/'.$val.']','[\/'.$val.']' ], 
+                    $content);    
+            }
+            return $strip_remaining_html ? strip_tags($content) : $content;
+        }
+
         private function _storeNatuurwijzerDekking()
         {
             $db = new SQLite3($this->SQLitePath["management"], SQLITE3_OPEN_READWRITE);
@@ -2194,4 +2334,5 @@
 
             return true;
         }
+
     }
