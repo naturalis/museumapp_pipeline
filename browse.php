@@ -17,6 +17,41 @@
 
     $f = $d->getFileLinks( "preview", $offset, $perpage );
 
+
+    function paginator()
+    {
+        global $_GET,$f,$perpage;
+
+        if ($_GET["offset"]>0)
+        {
+            echo sprintf(' <a href="?offset=%s">&nbsp;&lt;&lt;&nbsp;</a> ',0);
+            echo sprintf(' <a href="?offset=%s">&nbsp;&lt;&nbsp;</a> ',($_GET["offset"] - $perpage));
+        }
+
+        for ($i=0;$i<ceil($f["total"] /  $perpage);$i++ )
+        {
+            if (($i * $perpage)==$_GET["offset"])
+            {
+                echo sprintf(' &nbsp;%s&nbsp; ',$i);
+            }
+            else
+            {
+                if (abs(($_GET["offset"] - ($i * $perpage))) < (3 * $perpage))
+                {
+                    echo sprintf(' <a href="?offset=%s">&nbsp;%s&nbsp;</a> ',($i * $perpage),$i);
+                }
+            }   
+        }
+        
+        if (($_GET["offset"] + $perpage) < $f["total"])
+        {
+            echo sprintf(' <a href="?offset=%s">&nbsp;&gt;&nbsp;</a> ',($_GET["offset"] + $perpage));
+            echo sprintf(' <a href="?offset=%s">&nbsp;&gt;&gt;&nbsp;</a> ',((ceil($f["total"] /  $perpage)-1) * $perpage));
+        }
+
+    }
+
+
 ?>
 <html>
 <script
@@ -103,6 +138,18 @@ div {
     <div>
         <a href="index.php">index</a>
     </div>
+
+    <div id="paginator">
+<?php
+
+    paginator();
+
+?>
+    </div>
+
+
+
+
     <div id="main">
         <div id="list">
             <ul>
@@ -130,32 +177,7 @@ div {
     pagina: 
 <?php
 
-    if ($_GET["offset"]>0)
-    {
-        echo sprintf(' <a href="?offset=%s">&nbsp;&lt;&lt;&nbsp;</a> ',0);
-        echo sprintf(' <a href="?offset=%s">&nbsp;&lt;&nbsp;</a> ',($_GET["offset"] - $perpage));
-    }
-
-    for ($i=0;$i<ceil($f["total"] /  $perpage);$i++ )
-    {
-        if (($i * $perpage)==$_GET["offset"])
-        {
-            echo sprintf(' &nbsp;%s&nbsp; ',$i);
-        }
-        else
-        {
-            if (abs(($_GET["offset"] - ($i * $perpage))) < (3 * $perpage))
-            {
-                echo sprintf(' <a href="?offset=%s">&nbsp;%s&nbsp;</a> ',($i * $perpage),$i);
-            }
-        }   
-    }
-    
-    if (($_GET["offset"] + $perpage) < $f["total"])
-    {
-        echo sprintf(' <a href="?offset=%s">&nbsp;&gt;&nbsp;</a> ',($_GET["offset"] + $perpage));
-        echo sprintf(' <a href="?offset=%s">&nbsp;&gt;&gt;&nbsp;</a> ',((ceil($f["total"] /  $perpage)-1) * $perpage));
-    }
+    paginator();
 
 ?>
 </div>

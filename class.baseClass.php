@@ -64,7 +64,7 @@
 
         public function log( $message, $level, $source=null )
         {
-            $this->messages[]=[ "message" => $message, "level" => $level, "source" => $source ];
+            $this->messages[]=[ "timestamp" => date('d-M-Y H:i:s'), "message" => $message, "level" => $level, "source" => $source ];
         }
 
         public function getMessages()

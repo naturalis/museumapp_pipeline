@@ -21,8 +21,6 @@
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
     $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
 
-    $debug = isset($_ENV["PIPELINE_DEBUG"]) ? $_ENV["PIPELINE_DEBUG"]=="1" : false;
-
     include_once('auth.php');
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
@@ -31,7 +29,6 @@
 
     $d = new PipelineData;
 
-    $d->setDebug( $debug );
     $d->setDatabaseCredentials( $db );
 
     $d->setJsonPath( "preview", $jsonPreviewPath );
@@ -42,6 +39,7 @@
     $d->setSQLitePath( "management", $managementDataDbPath );
 
     $d->setSquaredImagePlaceholderURL( "http://145.136.242.65:8080/stubs/placeholder.jpg" );
+    $d->setObjectImagePlaceholderURL( "http://145.136.242.65:8080/stubs/object-placeholder.jpg" );
     $d->setSquaredImageURLRoot( "http://145.136.242.65:8080/squared_images/" );
     $d->setLeenobjectImageURLRoot( "http://145.136.242.65:8080/leenobject_images/" );
 
@@ -60,6 +58,7 @@
     $d->setImageSquares();
     $d->setLeenObjecten();
     $d->setFavourites();
+    $d->setObjectlessTaxa();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
@@ -141,6 +140,7 @@
     $taxonList = $d->getTaxonList();
     $leenObjecten = $d->getLeenObjecten();
     $favourites = $d->getFavourites();
+    $objectlessTaxa = $d->getObjectlessTaxa();
 
     // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
 
@@ -220,21 +220,25 @@ hr {
         [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false, "explain" => "objecten met gegenereerde vierkante 'soortsfoto'" ],
         [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
         [ "label" => "Favourites", "var" => $favourites, "refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
+        [ "label" => "Taxa w/o objects", "var" => $objectlessTaxa, "refreshable" => false, "explain" => "taxa zonder objecten" ],
     ];
+
+
 
     foreach ($sources as $key => $source)
     {
         echo sprintf(
-            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td><td class="harvest">%s</td></tr>'."\n",
+//            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td><td class="harvest">%s</td></tr>'."\n",
+            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td><td class="harvest">%s</td></tr>'."\n",
             $source["label"],
             $source["var"]["count"],
             ($source["var"]["harvest_date"] ?? ""),
-            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>'),
+//            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>'),
             $source["explain"]
         );
     }
     echo '<tr><td colspan="3">&nbsp;</td></tr>',"\n";
-    echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a href="browse.php">browse</a></td></tr>',"\n";
+    echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a target="_files" href="browse.php">browse</a></td></tr>',"\n";
 ?>
 </table>
 </div>

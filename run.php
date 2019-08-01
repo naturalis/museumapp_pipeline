@@ -67,6 +67,7 @@
     $d->setImageSquares();
     $d->setLeenObjecten();
     $d->setFavourites();
+    $d->setObjectlessTaxa();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
@@ -96,7 +97,7 @@
 
     foreach ($d->getMessages() as $val)
     {
-        echo $val["message"]," (",$val["source"],"; ",$val["level"],")\n";
+        echo $val["timestamp"], " - ", $val["source"], " - ", $val["message"],"\n";
     }
 
     echo "done\n";
