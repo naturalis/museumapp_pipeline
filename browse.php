@@ -36,7 +36,7 @@
             }
             else
             {
-                if (abs(($_GET["offset"] - ($i * $perpage))) < (3 * $perpage))
+                if (abs(($_GET["offset"] - ($i * $perpage))) < (4 * $perpage))
                 {
                     echo sprintf(' <a href="?offset=%s">&nbsp;%s&nbsp;</a> ',($i * $perpage),$i);
                 }

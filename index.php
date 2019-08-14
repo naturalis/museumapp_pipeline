@@ -1,25 +1,23 @@
 <?php
 
-    $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
-    $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
-    $db["pass"] = isset($_ENV["MYSQL_ROOT_PASSWORD"]) ? $_ENV["MYSQL_ROOT_PASSWORD"] : 'root';
-    $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : 'reaper';
+    $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : null;
+    $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : null;
+    $db["pass"] = isset($_ENV["MYSQL_PASSWORD"]) ? $_ENV["MYSQL_PASSWORD"] : null;
+    $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : null;
 
-    $imgSelectorDbPath = 
-        isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : '/data/image_selector/medialib_url_chooser.db';
+    $imgSelectorDbPath = isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : null;
+    $imgSquaresDbPath = isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : null;
+    $documentHashesDbPath = isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : null;
+    $managementDataDbPath = isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : null;
 
-    $imgSquaresDbPath = 
-        isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : '/data/image_squares/square_images.db';
+    $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : null;
+    $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : null;
+    $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : null;
 
-    $documentHashesDbPath = 
-        isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : '/data/document_hashes/document_hashes.db';
-
-    $managementDataDbPath = 
-        isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : '/data/management_data/management_data.db';
-
-    $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : '/data/documents/preview/';
-    $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : '/data/documents/publish/';
-    $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : '/data/queue/';
+    $urlImagePlaceholder = isset($_ENV["URL_PLACEHOLDER_IMAGE"]) ? $_ENV["URL_PLACEHOLDER_IMAGE"] : null;
+    $urlObjectPlaceholder = isset($_ENV["URL_PLACEHOLDER_OBJECT_IMAGE"]) ? $_ENV["URL_PLACEHOLDER_OBJECT_IMAGE"] : null;
+    $urlSquaredImageRoot = isset($_ENV["URL_SQUARES_IMAGE_ROOT"]) ? $_ENV["URL_SQUARES_IMAGE_ROOT"] : null;
+    $urlLeenImageRoot = isset($_ENV["URL_LEENOBJECTEN_IMAGE_ROOT"]) ? $_ENV["URL_LEENOBJECTEN_IMAGE_ROOT"] : null;
 
     include_once('auth.php');
     include_once('class.baseClass.php');
@@ -38,10 +36,10 @@
     $d->setSQLitePath( "squares", $imgSquaresDbPath );
     $d->setSQLitePath( "management", $managementDataDbPath );
 
-    $d->setSquaredImagePlaceholderURL( "http://145.136.242.65:8080/stubs/placeholder.jpg" );
-    $d->setObjectImagePlaceholderURL( "http://145.136.242.65:8080/stubs/object-placeholder.jpg" );
-    $d->setSquaredImageURLRoot( "http://145.136.242.65:8080/squared_images/" );
-    $d->setLeenobjectImageURLRoot( "http://145.136.242.65:8080/leenobject_images/" );
+    $d->setSquaredImagePlaceholderURL( $urlImagePlaceholder );
+    $d->setObjectImagePlaceholderURL( $urlObjectPlaceholder );
+    $d->setSquaredImageURLRoot( $urlSquaredImageRoot );
+    $d->setLeenobjectImageURLRoot( $urlLeenImageRoot );
 
     $d->init();
 
@@ -59,6 +57,7 @@
     $d->setLeenObjecten();
     $d->setFavourites();
     $d->setObjectlessTaxa();
+    $d->setMaps();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
@@ -141,6 +140,7 @@
     $leenObjecten = $d->getLeenObjecten();
     $favourites = $d->getFavourites();
     $objectlessTaxa = $d->getObjectlessTaxa();
+    $maps = $d->getMaps();
 
     // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
 
@@ -221,9 +221,8 @@ hr {
         [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
         [ "label" => "Favourites", "var" => $favourites, "refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
         [ "label" => "Taxa w/o objects", "var" => $objectlessTaxa, "refreshable" => false, "explain" => "taxa zonder objecten" ],
+        [ "label" => "Maps", "var" => $maps, "refreshable" => false, "explain" => "verspreidingskaarten" ],
     ];
-
-
 
     foreach ($sources as $key => $source)
     {

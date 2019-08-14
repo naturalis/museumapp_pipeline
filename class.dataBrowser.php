@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
 
         public function getFileLinks( $state, $offset=0, $length=100 )
         {
-            $this->state = $state;
+            $this->setState($state);
             $this->_getFiles();
             if (count($this->files)>0)
             {
@@ -55,12 +55,24 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
             $this->deleteAllPreviousJsonFiles( "preview" );
         }
 
+        public function getNumberOfFiles()
+        {
+            $this->_getFiles();
+            return count($this->files);
+        }
+
+        public function setState( $state )
+        {
+            if (array_key_exists($state, $this->jsonPath))
+            {
+                $this->state = $state;
+            }
+        }
+
         public function publishPreviewFiles()
         {
             $this->_initializeSQLite();
-
-            $this->state = "preview";
-
+            $this->setState("preview");
             $this->_getFiles();
             $this->_calculateHashes();
             $this->_movePreviewFilesToPublish();

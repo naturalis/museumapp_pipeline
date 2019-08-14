@@ -7,7 +7,10 @@
         public $db;
         public $jsonPath = [ "preview" => null, "publish" => null ];
         public $SQLitePath = [ "selector" => null, "squares" => null, "management" => null  ];
+        public $language;
+        public $languageDefault="nl";
         private $messages=[];
+        private $translations = [ "nl" => [ "english" => "Engels", "dutch" => "Nederlands" ] ];
 
         const DATA_MESSAGE = 1;        
         const DATA_ERROR = 2;
@@ -119,6 +122,9 @@
             return $list;
         }
 
-
+        public function translate($txt)
+        {
+            return  $this->translations[$this->language][$txt] ?? $txt;
+        }
 
     }
