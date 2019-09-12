@@ -104,12 +104,12 @@
             $this->db->set_charset("utf8");
         }
 
-        public function getMySQLSource( $source )
+        public function getMySQLSource( $source, $order_by=null )
         {
             $list=[];
 
             try {
-                $sql = $this->db->query("select * from " . $source);
+                $sql = $this->db->query("select * from " . $source . ( !empty($sort) ? " order by " . $order_by : "" ));
                 $list=[];
                 while ($row = $sql->fetch_assoc())
                 {
@@ -117,6 +117,24 @@
                 }
             } catch (Exception $e) {
                 $this->log(sprintf("could not read table %s",$source),self::SYSTEM_ERROR,"collector");
+            }
+
+            return $list;
+        }
+
+        public function getMySQLQuery( $query )
+        {
+            $list=[];
+
+            try {
+                $sql = $this->db->query($query);
+                $list=[];
+                while ($row = $sql->fetch_assoc())
+                {
+                    $list[]=$row;
+                }
+            } catch (Exception $e) {
+                $this->log($e->getMessage(),self::SYSTEM_ERROR,"collector");
             }
 
             return $list;

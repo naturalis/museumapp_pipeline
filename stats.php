@@ -46,13 +46,12 @@ table tr td.divider {
 }
 </style>
 <body>
-    <p>
-        <a href="stats2.php">taxa</a>
-    </p>
 
     <h3>Natuurwijzerleerobjecten</h3>
-   
+
 <?php
+
+    include_once("_menu.php");
 
     echo "<table>
         <tr>

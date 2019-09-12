@@ -13,6 +13,8 @@
         const TABLE_NATUURWIJZER = 'natuurwijzer';
         const TABLE_TAXONLIST = 'taxonlist';
         const TABLE_TTIK = 'ttik';
+        const TABLE_MASTERLIST = 'tentoonstelling';
+        const TABLE_CRS = 'crs';
         
         public function init()
         {
@@ -108,6 +110,25 @@
                     $d[]=[ "taxon" => $row["taxon"], "status" => $row["status"] ];
                 }
             }
+            else
+            if ($type=="taxa_per_room")
+            {
+                $sql = $db->prepare('SELECT * FROM taxa_per_room');
+                $results = $sql->execute();
+                $d=[];
+                while($row = $results->fetchArray())
+                {
+                    $d[]=$row;
+                }
+                return $d;
+            }
+            else
+            if ($type=="taxa_overall")
+            {
+                $sql = $db->prepare('SELECT * FROM taxa_overall');
+                $results = $sql->execute();
+                return $results->fetchArray();
+            }
 
 
             $db->close();
@@ -115,4 +136,47 @@
 
         }
 
+        public function getObjectsPerRoom()
+        {
+
+            $a = $this->getMySQLQuery("
+                select 
+                    Zaal, count(distinct Registratienummer) total
+                from ".self::TABLE_MASTERLIST." 
+                left join ".self::TABLE_CRS." 
+                    on Registratienummer = REGISTRATIONNUMBER 
+                where URL is not null 
+                and Zaal is not null 
+                and Zaal !='' 
+                and `SCname controle` is not null
+                and `SCname controle` != ''  
+                group by Zaal
+            ");
+
+            $b = $this->getMySQLQuery("
+                select 
+                    Zaal, count(distinct Registratienummer) total
+                from ".self::TABLE_MASTERLIST."  
+                left join ".self::TABLE_CRS." 
+                    on Registratienummer = REGISTRATIONNUMBER 
+                where URL is null 
+                and Zaal is not null 
+                and Zaal !='' 
+                and `SCname controle` is not null
+                and `SCname controle` != ''  
+                group by Zaal
+            ");
+
+            foreach (array_unique(array_column(array_merge($a,$b),"Zaal")) as $zaal)
+            {
+                $c[] = [
+                    "zaal" =>$zaal, 
+                    "unique_unitids_with_image_URL" => $a[array_search($zaal, array_column($a, "Zaal"))]["total"],
+                    "unique_unitids_without_image_URL" => $b[array_search($zaal, array_column($b, "Zaal"))]["total"]
+                ];
+            
+            }
+
+            return $c;
+        }
     }

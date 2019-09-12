@@ -1,4 +1,4 @@
-<?php
+    <?php
 
     if (PHP_SAPI !== 'cli')
     {
@@ -13,8 +13,12 @@
 
     $imgSelectorDbPath = isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : null;
     $imgSquaresDbPath = isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : null;
-    $documentHashesDbPath = isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : null;
-    $managementDataDbPath = isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : null;
+    $documentHashesDbPath =
+        (isset($_ENV["DOCUMENT_HASHES_PATH"]) ? $_ENV["DOCUMENT_HASHES_PATH"] : null) .
+        (isset($_ENV["DOCUMENT_HASHES_DB"]) ? $_ENV["DOCUMENT_HASHES_DB"] : null);
+    $managementDataDbPath = 
+        (isset($_ENV["MANAGEMENT_DATA_PATH"]) ? $_ENV["MANAGEMENT_DATA_PATH"] : null) .
+        (isset($_ENV["MANAGEMENT_DATA_DB"]) ? $_ENV["MANAGEMENT_DATA_DB"] : null);
 
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : null;
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : null;
@@ -73,13 +77,13 @@
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
     $d->saveTaxonList();
-    $d->addCRSToTL();
+    $d->addCRSImagesToTL();
     $d->addBrahmsToTL();
     $d->addIUCNToTL();
 
     if ($generateFiles)
     {
-        $d->addCRSToTL();
+        $d->addCRSImagesToTL();
         $d->addBrahmsToTL();
         $d->addIUCNToTL();
         $d->resolveExhibitionRooms();
@@ -87,8 +91,8 @@
         $d->addNatuurwijzerTextsToTL();
         $d->addTopstukkenTextsToTL();
         $d->makeLinksSelection();
-        $d->effectuateImageSelection();
         $d->addLeenobjectImages();
+        $d->effectuateImageSelection();
         $d->addImageSquares();
         $d->addFavourites();
         $d->generateJsonDocuments();

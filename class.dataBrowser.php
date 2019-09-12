@@ -45,8 +45,6 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
         {
             $this->state = $state;
             $f = file_get_contents($this->jsonPath[$this->state] . $file);
-            // $f = json_decode($f,true);
-            // $f = print_r($f,true);
             return $f;
         }
 
@@ -71,11 +69,38 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
 
         public function publishPreviewFiles()
         {
+            $this->_readBusyFile();
+            $this->_removeReadyFile();
             $this->_initializeSQLite();
             $this->setState("preview");
             $this->_getFiles();
             $this->_calculateHashes();
             $this->_movePreviewFilesToPublish();
+            $this->_makeReadyFile();
+        }
+
+        private function _readBusyFile()
+        {
+            if (file_exists($this->jsonPath["publish"] . ".busy"))
+            {
+                throw new Exception("loader is busy (might take a few minutes)", 1);
+            }
+        }
+
+        private function _removeReadyFile()
+        {
+            $f = $this->jsonPath["publish"] . ".ready";
+            if (file_exists($f))
+            {
+                unlink($f);
+            }
+        }
+
+        private function _makeReadyFile()
+        {
+            $f = $this->jsonPath["publish"] . ".ready";
+            touch($f);
+            chmod($f,0777);
         }
 
         private function _calculateHashes()

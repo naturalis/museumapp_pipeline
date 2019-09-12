@@ -7,8 +7,12 @@
 
     $imgSelectorDbPath = isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : null;
     $imgSquaresDbPath = isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : null;
-    $documentHashesDbPath = isset($_ENV["DOCUMENT_HASHES_DB_PATH"]) ? $_ENV["DOCUMENT_HASHES_DB_PATH"] : null;
-    $managementDataDbPath = isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : null;
+    $documentHashesDbPath =
+        (isset($_ENV["DOCUMENT_HASHES_PATH"]) ? $_ENV["DOCUMENT_HASHES_PATH"] : null) .
+        (isset($_ENV["DOCUMENT_HASHES_DB"]) ? $_ENV["DOCUMENT_HASHES_DB"] : null);
+    $managementDataDbPath = 
+        (isset($_ENV["MANAGEMENT_DATA_PATH"]) ? $_ENV["MANAGEMENT_DATA_PATH"] : null) .
+        (isset($_ENV["MANAGEMENT_DATA_DB"]) ? $_ENV["MANAGEMENT_DATA_DB"] : null);
 
     $jsonPreviewPath = isset($_ENV["JSON_PREVIEW_PATH"]) ? $_ENV["JSON_PREVIEW_PATH"] : null;
     $jsonPublishPath = isset($_ENV["JSON_PUBLISH_PATH"]) ? $_ENV["JSON_PUBLISH_PATH"] : null;
@@ -62,9 +66,6 @@
     $d->addTaxonomyToTL();
     $d->addObjectDataToTL();
     $d->saveTaxonList();
-    $d->addCRSToTL();
-    $d->addBrahmsToTL();
-    $d->addIUCNToTL();
 
     $b = new DataBrowser;
 
@@ -81,24 +82,45 @@
     {
         $s->setSource( $_POST["source"] );
         
-        try {
+        try
+        {
             $s->queueRefreshJob();
-            $queueMessage = [ "source" => $_POST["source"], "message" => "refresh-job ingepland", "success" => 1 ];
-        } catch (Exception $e) {
+        } 
+        catch (Exception $e)
+        {
             $queueMessage = [ "source" => $_POST["source"], "message" => $e->getMessage(), "success" => 0  ];
         }
     }
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="publish")
     {
-        try {
+        try
+        {
             $b->publishPreviewFiles();
-            $s->queuePublishJob();
+            // $s->queuePublishJob();
             $publishMessage = [ "message" => "bestanden klaar gezet voor publiceren", "success" => 1 ];
-        } catch (Exception $e) {
+            $d->storeEventTimestamp( "publish" );
+        }
+        catch (Exception $e)
+        {
             $publishMessage = [ "message" => $e->getMessage(), "success" => 0  ];
         }
 
+    }
+    else
+    if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="cancel-refresh")
+    {
+        $s->setSource( $_POST["source"] );
+        $s->setJob( $_POST["job"] );
+        
+        try
+        {
+            $s->deleteRefreshJob();
+        }
+        catch (Exception $e)
+        {
+            $queueMessage = [ "source" => $_POST["source"], "message" => $e->getMessage(), "success" => 0  ];
+        }
     }
     else
     if (isset($_POST) && isset($_POST["action"]) && $_POST["action"]=="delete")
@@ -111,19 +133,24 @@
 
         set_time_limit(300);
 
+        $d->addCRSImagesToTL();
+        $d->addBrahmsToTL();
+        $d->addIUCNToTL();
         $d->resolveExhibitionRooms();
         $d->addTTIKTextsToTL();
         $d->addNatuurwijzerTextsToTL();
         $d->addTopstukkenTextsToTL();
         $d->makeLinksSelection();
-        $d->effectuateImageSelection();
         $d->addLeenobjectImages();
+        $d->effectuateImageSelection();
         $d->addImageSquares();
         $d->addFavourites();
         $d->generateJsonDocuments();
         $d->cleanUp();
 
         $messages = $d->getMessages();
+
+        $d->storeEventTimestamp( "generate" );
     }
 
     $masterList = $d->getMasterList();
@@ -142,10 +169,9 @@
     $objectlessTaxa = $d->getObjectlessTaxa();
     $maps = $d->getMaps();
 
-    // $brahmsList = $d->getBrahmsUnitIDsFromObjectData();
-
     $fPreview = $b->getFileLinks( "preview" );
-    $prevQueuedJobs = $s->findEarlierJobs();
+    // $prevQueuedJobs = $s->findEarlierJobs();
+    $events = $d->getEventTimestamps();
 
 ?>
 <html>
@@ -161,6 +187,14 @@
 body {
     font-family: Open Sans;
 }
+.title {
+    display: inline-block;
+    padding: 0;
+    margin: 0 12px 0 2px;
+}
+a.refresh {
+    font-size: 10px;
+}
 #numbers table tr:hover {
     background-color: #eee;
 }
@@ -172,6 +206,10 @@ div {
 }
 .clickable {
     cursor: pointer;
+}
+.queued {
+    color: green;
+    font-size: 10px;
 }
 tr td {
     height: 30px;
@@ -196,54 +234,93 @@ hr {
     width: 350px;
     text-align: left;
 }
+span.refresh-legend {
+    display: block;
+    font-size: 10px;
+}
+span.icon {
+    display: inline-block;
+    font-size: 12px;
+    width: 20px;
+}
 </style>
 </head>
 <body>
+    <div>
+        <h2 class='title'>Museumapp Pipeline</h2><a class="refresh" href="index.php">reload</a>
+    </div>
+
+<?php
+
+    include_once("_menu.php");
+
+?>
     <div id="numbers">
-        <h2>Museumapp Pipeline</h2>
         <table>
 <?php
 
-    echo '<tr class="titles"><td>bron</td><td>#</td><td class="harvest" colspan=2>harvest date</td></tr>',"\n";
+    echo '<tr class="titles">
+            <td>bron</td>
+            <td>#</td>
+            <td class="harvest">harvest date</td>
+            <td class="harvest">refresh</td>
+            <td class="harvest"></td>
+        </tr>',"\n";
 
     $sources = [
-        [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "data-source" => "masterList", "explain" => "unieke objecten in de masterlist" ],
-        [ "label" => "Taxa", "var" => $taxonList, "refreshable" => false, "explain" => "unieke taxa in de masterlist" ],
-        [ "label" => "CRS", "var" => $crs, "refreshable" => true, "data-source" => "CRS", "explain" => "afbeeldingen uit het CRS" ],
-        [ "label" => "Brahms", "var" => $brahms, "refreshable" => false, "explain" => "afbeeldingen uit Brahms"  ],
-        [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "data-source" => "IUCN", "explain" => "IUCN statussen (klein aantal soorten heeft meer dan één status)" ],
-        [ "label" => "NBA", "var" => $nba, "refreshable" => true, "data-source" => "NBA", "explain" => "NBA-records, één per object" ],
-        [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "data-source" => "natuurwijzer", "explain" => "unieke natuurwijzer-artikelen getagged met zaal en/of taxon" ],
-        [ "label" => "Topstukken", "var" => $topstukken, "refreshable" => true, "data-source" => "topstukken", "explain" => "topstuk-objecten" ],
-        [ "label" => "TTIK", "var" => $ttik, "refreshable" => true, "data-source" => "ttik", "explain" => "ttik-records, één per (hoger) taxon" ],
-        [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false, "explain" => "objecten met geordende afbeeldingselecties" ],
-        [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "refreshable" => false, "explain" => "objecten met gegenereerde vierkante 'soortsfoto'" ],
-        [ "label" => "Leenobjecten", "var" => $leenObjecten, "refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
-        [ "label" => "Favourites", "var" => $favourites, "refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
-        [ "label" => "Taxa w/o objects", "var" => $objectlessTaxa, "refreshable" => false, "explain" => "taxa zonder objecten" ],
-        [ "label" => "Maps", "var" => $maps, "refreshable" => false, "explain" => "verspreidingskaarten" ],
+        [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "automatically_refreshable" => false, "data-source" => "tentoonstelling", "explain" => "unieke objecten in de masterlist; <a href=\"https://docs.google.com/spreadsheets/d/1hUZkP50gziO7fTCDnENJHbI4j-DLVxIjWcgTVUs1WkA/export?format=csv\">download csv</a> (vereist google-login & rechten)"],
+        [ "label" => "Taxa", "var" => $taxonList, "explain" => "unieke taxa in de tentoonstellingsobjecten-lijst" ],
+        [ "label" => "CRS", "var" => $crs, "data-source" => "crs", "refreshable" => false, "automatically_refreshable" => false, "explain" => "afbeeldingen uit het CRS" ],
+        [ "label" => "Brahms", "var" => $brahms, "data-source" => "brahms", "refreshable" => true, "automatically_refreshable" => false, "explain" => "afbeeldingen uit Brahms" ],
+        [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "iucn", "explain" => "IUCN statussen (klein aantal soorten heeft meer dan één status)" ],
+        [ "label" => "NBA", "var" => $nba, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "nba", "explain" => "NBA-records, één per object" ],
+        [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "natuurwijzer", "explain" => "unieke natuurwijzer-artikelen getagged met zaal en/of taxon" ],
+        [ "label" => "Topstukken", "var" => $topstukken, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "topstukken", "explain" => "topstuk-objecten" ],
+        [ "label" => "Linnaeus (TTIK)", "var" => $ttik, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "ttik", "explain" => "ttik-records, één per (hoger) taxon" ],
+        [ "label" => "Afbeeldingselecties", "var" => $imageSelections, "refreshable" => false, "explain" => "objecten met geordende afbeeldingselecties", "data-source" => "image_selector" ],
+        [ "label" => "Gegenereerde vierkanten", "var" => $imageSquares, "data-source" => "image_squares", "refreshable" => true,  "automatically_refreshable" => true, "explain" => "objecten met gegenereerde vierkante 'soortsfoto'" ],
+        [ "label" => "Leenobjecten", "var" => $leenObjecten, "data-source" => "leenobjecten", "refreshable" => true, "automatically_refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
+        [ "label" => "Favourites", "var" => $favourites, "data-source" => "favourites", "refreshable" => true, "automatically_refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
+        [ "label" => "Taxa w/o objects", "var" => $objectlessTaxa, "data-source" => "taxa_no_objects", "refreshable" => true, "automatically_refreshable" => false, "explain" => "taxa zonder objecten" ],
+        [ "label" => "Maps", "var" => $maps, "data-source" => "maps", "refreshable" => true,  "automatically_refreshable" => false, "explain" => "verspreidingskaarten" ],
     ];
 
     foreach ($sources as $key => $source)
     {
         echo sprintf(
-//            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td>%s</td><td class="harvest">%s</td></tr>'."\n",
-            '<tr><td>%s:</td><td>%s</td><td class="harvest">%s</td><td class="harvest">%s</td></tr>'."\n",
+            '<tr>
+                <td>%s:</td>
+                <td class="numbers" data-source="%s">%s</td>
+                <td class="harvest_date harvest" data-source="%s">%s</td>
+                <td class="refresh clickable refresh-trigger" data-source="%s">%s</td>
+                <td class="refresh-state clickable queued" data-source="%s" style="display:none">%s</td>
+                <td class="harvest">%s</td></tr>'."\n",
             $source["label"],
-            $source["var"]["count"],
-            ($source["var"]["harvest_date"] ?? ""),
-//            (isset($source["data-source"]) ? '<td data-source="' . $source["data-source"] . ' class="clickable refresh">&#128259;' : '<td>'),
+            $source["data-source"],$source["var"]["count"],
+            $source["data-source"],($source["var"]["harvest_date"] ?? ""),
+            $source["data-source"],
+            ($source["refreshable"] && $source["automatically_refreshable"]) ? '&nbsp;&#128259;' : ($source["refreshable"] ? '(&#128259;)' : ''),
+            $source["data-source"],
+            "",
             $source["explain"]
         );
     }
-    echo '<tr><td colspan="3">&nbsp;</td></tr>',"\n";
-    echo '<tr><td>Gegenereerde JSON-bestanden:</td><td>',$fPreview["total"],'</td><td><a target="_files" href="browse.php">browse</a></td></tr>',"\n";
+
+    
 ?>
 </table>
+    <span class="refresh-legend"><span class="icon">&#128259;</span> volautomatische refresh</span>
+    <span class="refresh-legend"><span class="icon">(&#128259;)</span> refresh van handmatig geplaatst databestand</span>
+    <span class="refresh-legend"><span class="icon" title="current server time">&#128339;</span> <?php echo date('Y-m-d H:i:s');  ?></span>
+    <span class="refresh-legend">generated last: <?php echo $events["generate"]; ?></span>
+    <span class="refresh-legend">published last: <?php echo $events["publish"]; ?></span>
 </div>
 <div>
-    <input type="button" value="Genereer nieuwe JSON-bestanden" onclick="generatePreviewFiles();"> 
+    <input type="button" value="Genereer nieuwe JSON-bestanden" id="generate_button" onclick="generatePreviewFiles();"> 
     <input type="button" value="Bestanden publiceren" onclick="publishPreviewFiles();">   
+    <p>
+        Gegenereerde JSON-bestanden: <?php echo $fPreview["total"]; ?> <a href="browse.php">browse</a>
+    </p>
 </div>
 <div id="messages">
 <?php
@@ -293,53 +370,33 @@ hr {
 
 </body>
 <script>
-<?php
-    if (isset($queueMessage))
-    {
-        echo 'queueMessage = { source : "'.$queueMessage["source"].'" , message : "'.$queueMessage["message"].'", success: '.$queueMessage["success"].'  };';
-    }
-    if (isset($prevQueuedJobs))
-    {
-        foreach ($prevQueuedJobs as $val)
-        {
-            echo "prevQueuedJobs.push('".$val."');\n";
-        }   
-    }
-?>
-
 $( document ).ready(function()
 {
     $('.refresh').on('click',function()
     {
+        if ($(this).attr('data-source').length==0)
+        {
+            return;
+        }
         queuePipelineSourceRefresh($(this).attr('data-source'));
     })
 
-    printPreviousQueuedJobs();
-    printQueueMessage();
+    $('.refresh-state').on('click',function()
+    {
+        if ($(this).attr('data-source').length==0)
+        {
+            return;
+        }
+        unqueuePipelineSourceRefresh($(this));
+    })
+
+
+    // printPreviousQueuedJobs();
+    // printQueueMessage();
+
+    runQueueMonitor();
+    setInterval(runQueueMonitor, 5000);
 
 });
 </script>
-<pre>
-<?php
-
-    if (!empty($brahmsList))
-    {
-        foreach ($brahmsList as $val)
-        {
-            echo $val,"\n";
-        };
-    }
-
-
-    // foreach ($taxonList as $val)
-    // {
-    //     echo $val["taxon"],"\n";
-    // };
-
-?>
-</pre>
 </html>
-
-
-
-

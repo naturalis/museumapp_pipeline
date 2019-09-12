@@ -6,7 +6,9 @@
     $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : 'reaper';
 
     $managementDataDbPath = 
-        isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : '/data/management_data/management_data.db';
+        (isset($_ENV["MANAGEMENT_DATA_PATH"]) ? $_ENV["MANAGEMENT_DATA_PATH"] : null) .
+        (isset($_ENV["MANAGEMENT_DATA_DB"]) ? $_ENV["MANAGEMENT_DATA_DB"] : null);
+
 
     include_once("auth.php");
     include_once('class.baseClass.php');
@@ -90,6 +92,8 @@ td.origin {
     <h3>Taxa content dekking (TTIK)</h3>
     
 <?php
+
+    include_once("_menu.php");
 
     echo "<table class=main>
         <tr>

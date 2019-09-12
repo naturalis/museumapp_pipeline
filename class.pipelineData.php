@@ -3,6 +3,7 @@
     class PipelineData extends BaseClass
     {
         private $masterList;
+        private $masterListObjectIndex=[];
         private $CRS;
         private $brahms;
         private $IUCN;
@@ -27,12 +28,18 @@
         private $documentId=1;
 
         private $maxTaxonArticles=5;
+        private $maxTaxonArticlesSpecialCases=8;
+        private $taxonArticlesSpecialCases = [ "Tyrannosaurus rex" ];
         private $maxClassificationArticles=5;
         private $maxTotalArticles=5;
         private $maxNbaFields=[ "taxon" => null, "unitid" => null, "fields" => 0 ];
         private $availableLanguages = [ "nl" => "dutch", "en" => "english" ];
 
         private $debug_masterListSCnames = [
+            // "Ovis aries",
+            // "Tyrannosaurus rex",
+            // "Plateosaurus engelhardti",
+            // "smaragd",
             // "Lemur catta",
             // "Panthera leo",
             // "Bos taurus",
@@ -95,6 +102,18 @@
             "Increasing" => "Toenemend"
         ];
 
+        private $nba_valueTranslations = [       
+            "HumanObservation" => "Human observation",
+            "PreservedSpecimen" => "Preserved specimen",
+            "FossilSpecimen" => "Fossil specimen",
+            "OtherSpecimen" => "Other specimen",
+            "DrawingOrPhotograph" => "Drawing or photograph",
+            "WholeOrganism" => "Whole organism",
+            "AnimalPart" => "Animal part",
+            "PaleontologicalPart" => "Paleontological part",
+            "dry&wet specimen" => "dry & wet specimen",
+        ];
+
         // masterlijst => natuurwijzer
         private $exhibitionRoomsTranslations = [
             "Dinos" => "Dinotijd",
@@ -105,8 +124,8 @@
             "LiveScience" => "LiveScience",
             "Aarde" => "De aarde",
             "Mens" => "De vroege mens",
-            "Schatkamer 1.0" => "",
-            "Schatkamer 2.0" => "",
+            "Schatkamer 1.0" => "De aarde",
+            "Schatkamer 2.0" => "De aarde",
         ];
 
         private $roomsToMatchLinksOn = [
@@ -161,6 +180,7 @@
         const TABLE_SELECTED_IMAGES = 'selected_urls';
         const TABLE_SQUARED_IMAGES = 'squared_images_new';
         const TABLE_MAPS = 'maps';
+        const TABLE_EVENTS = 'events';
 
         const TABLE_MASTER_NAME_COL = 'SCname controle';
         const PREFIX_LEENOBJECTEN = 'leen.';
@@ -206,7 +226,7 @@
         {
             $this->masterList = $this->getMySQLSource(self::TABLE_MASTER);
 
-            $this->masterList=
+            $this->masterList =
                 array_map(function($a)
                 {
                     $a["_is_leenobject"] =
@@ -227,6 +247,11 @@
                 {
                     return in_array($a[self::TABLE_MASTER_NAME_COL],$b);
                 });
+            }
+
+            foreach ($this->masterList as $key => $val)
+            {
+                $this->masterListObjectIndex[$val[self::TABLE_MASTER_NAME_COL]][]=$key;
             }
 
             $this->log(sprintf("read %s masterlist entries",count($this->masterList)),self::DATA_MESSAGE,"init");
@@ -254,7 +279,7 @@
 
         public function setIUCN()
         {
-            $this->IUCN = $this->getMySQLSource(self::TABLE_IUCN);
+            $this->IUCN = $this->getMySQLSource(self::TABLE_IUCN,"inserted desc");
             $d=[];
 
             // TODO: taking out double-entries: this should be fixed in the reaper
@@ -281,7 +306,8 @@
                 $d[$val["unitid"]]=[
                     "unitid" => $val["unitid"],
                     "collection"  => $val["collection"],
-                    "document"  => json_decode($val["document"],true)
+                    "document"  => json_decode($val["document"],true),
+                    "inserted"  => $val["inserted"]
                 ];
             }
 
@@ -559,7 +585,7 @@
         {
             return [
                 "data" => $this->masterList,
-                "count" => count($this->masterList),
+                "count" => count((array)$this->masterList),
                 "harvest_date" => $this->masterList[0]["inserted"]
             ];
         }
@@ -568,7 +594,7 @@
         {
             return [
                 "data" => $this->CRS,
-                "count" => count($this->CRS),
+                "count" => count((array)$this->CRS),
                 "harvest_date" => $this->CRS[0]["inserted"]
             ];
         }
@@ -577,7 +603,7 @@
         {
             return [
                 "data" => $this->brahms,
-                "count" => count($this->brahms),
+                "count" => count((array)$this->brahms),
                 "harvest_date" => $this->brahms[0]["inserted"]
             ];
         }
@@ -586,7 +612,7 @@
         {
             return [
                 "data" => $this->leenobjecten,
-                "count" => count($this->leenobjecten),
+                "count" => count((array)$this->leenobjecten),
                 "harvest_date" => $this->leenobjecten[0]["inserted"]
             ];
         }
@@ -595,7 +621,7 @@
         {
             return [
                 "data" => $this->favourites,
-                "count" => count($this->favourites),
+                "count" => count((array)$this->favourites),
                 "harvest_date" => $this->favourites[0]["inserted"]
             ];
         }
@@ -604,7 +630,7 @@
         {
             return [
                 "data" => $this->objectlessTaxa,
-                "count" => count($this->objectlessTaxa),
+                "count" => count((array)$this->objectlessTaxa),
                 "harvest_date" => $this->objectlessTaxa[0]["inserted"]
             ];
         }
@@ -613,7 +639,7 @@
         {
             return [
                 "data" => $this->IUCN,
-                "count" => count($this->IUCN),
+                "count" => count((array)$this->IUCN),
                 "harvest_date" => $this->IUCN[0]["inserted"]
             ];
         }
@@ -622,7 +648,7 @@
         {
             return [
                 "data" => $this->NBA,
-                "count" => count($this->NBA),
+                "count" => count((array)$this->NBA),
                 "harvest_date" => $this->NBA[0]["inserted"]
             ];
         }
@@ -631,7 +657,7 @@
         {
             return [
                 "data" => $this->natuurwijzer,
-                "count" => count($this->natuurwijzer),
+                "count" => count((array)$this->natuurwijzer),
                 "harvest_date" => $this->natuurwijzer[0]["inserted"]
             ];
         }
@@ -640,7 +666,7 @@
         {
             return [
                 "data" => $this->topstukken,
-                "count" => count($this->topstukken),
+                "count" => count((array)$this->topstukken),
                 "harvest_date" => $this->topstukken[0]["inserted"]
             ];
         }
@@ -649,7 +675,7 @@
         {
             return [
                 "data" => $this->ttik,
-                "count" => count($this->ttik),
+                "count" => count((array)$this->ttik),
                 "harvest_date" => $this->ttik[0]["inserted"]
             ];
         }
@@ -658,7 +684,7 @@
         {
             return [
                 "data" => $this->imageSelection,
-                "count" => count($this->imageSelection)
+                "count" => count((array)$this->imageSelection)
             ];
         }
 
@@ -666,7 +692,7 @@
         {
             return [
                 "data" => $this->imageSquares,
-                "count" => count($this->imageSquares)
+                "count" => count((array)$this->imageSquares)
             ];
         }
 
@@ -674,7 +700,7 @@
         {
             return [
                 "data" => $this->maps,
-                "count" => count($this->maps)
+                "count" => count((array)$this->maps)
             ];
         }
 
@@ -682,7 +708,7 @@
         {
             return [
                 "data" => $this->taxonList,
-                "count" => count($this->taxonList)
+                "count" => count((array)$this->taxonList)
             ];
         }
 
@@ -818,7 +844,9 @@
 
             $stmt = $this->db->prepare("insert into ".self::TABLE_TAXONLIST." (taxon,collection,synonyms) values (?,?,?)");
 
-            foreach($this->taxonList as $val)
+            $this->db->query("START TRANSACTION");
+
+            foreach($this->taxonList as $key => $val)
             {
                 if (isset($val["object_data"]))
                 {
@@ -846,48 +874,41 @@
                 $stmt->execute();
             }
 
+            $this->db->query("COMMIT");
+
             $this->log(sprintf("saved taxonlist (%s records)",count($this->taxonList)),self::DATA_MESSAGE,"taxonlist");
         }
 
         public function addObjectDataToTL()
         {
+
             $d=[];
+
             foreach ((array)$this->taxonList as $val)
             {
-                $prefixes=[];
+                $matches=[];
 
-                $matches = array_filter($this->masterList,function($a) use ($val)
+                foreach((array)$this->masterListObjectIndex[isset($val["taxon_original"]) ? $val["taxon_original"] : $val["taxon"]] as $objIndex)
                 {
-                    if (isset($val["taxon_original"]))
-                    {
-                        return $val["taxon_original"]==$a[self::TABLE_MASTER_NAME_COL];
-                    }
-                    else
-                    {
-                        return $val["taxon"]==$a[self::TABLE_MASTER_NAME_COL];
-                    }
-                });
+                    $match = $this->masterList[$objIndex];
 
-                if (empty($matches))
+                    $val["object_data"][]=
+                        [
+                            "unitid"=>$match["Registratienummer"],
+                            "exhibition_room"=>$match["Zaal"],
+                            "location"=>$match["Zaaldeel"],
+                            "is_leenobject"=>$match["_is_leenobject"],
+                            "is_brahms"=>$match["_is_brahms"]
+                        ];
+
+                    $this->exhibitionRooms_ML[]=$match["Zaal"];
+                }
+
+                if (empty($val["object_data"]))
                 {
                     if (array_search($val["taxon"], array_column($this->objectlessTaxa, "taxon"))===false)
                     {
                         $this->log(sprintf("no masterList match found for taxon %s (!?)",$val["taxon"]),self::DATA_ERROR,"objects");    
-                    }
-                }
-                else
-                {
-                    foreach ($matches as $match)
-                    {
-                        $val["object_data"][]=
-                            [
-                                "unitid"=>$match["Registratienummer"],
-                                "exhibition_room"=>$match["Zaal"],
-                                "location"=>$match["Zaaldeel"],
-                                "is_leenobject"=>$match["_is_leenobject"],
-                                "is_brahms"=>$match["_is_brahms"]
-                            ];
-                        $this->exhibitionRooms_ML[]=$match["Zaal"];
                     }
                 }
 
@@ -897,8 +918,9 @@
             $this->taxonList = $d;
             $this->exhibitionRooms_ML=array_filter(array_unique((array)$this->exhibitionRooms_ML));
         }
+            
 
-        public function addCRSToTL()
+        public function addCRSImagesToTL()
         {
             $m=[];
             foreach ($this->taxonList as $key => $val)
@@ -1040,7 +1062,8 @@
 
                     $category = $IUCN[$key]["category"];
 
-                    if (!in_array($category,["NA","NE"]))
+                    // NA, NE en DD worden niet weergegeven in de app (maar wel geleverd en door Q42 geaccepteerd)
+                    // if (!in_array($category,["NA","NE","DD"]))
                     {
                         $population_trend = $IUCN[$key]["population_trend"];
                         $assessment_date = $IUCN[$key]["assessment_date"];
@@ -1251,8 +1274,15 @@
                     }
                 }
 
+                $maxTaxonArticles = $this->maxTaxonArticles;
+
+                if (in_array($val["taxon"], $this->taxonArticlesSpecialCases))
+                {
+                    $maxTaxonArticles = $this->maxTaxonArticlesSpecialCases;
+                }
+
                 // matching on higher classification
-                if ((count($matched_on_taxon)+count($matched_on_synonym))<$this->maxTaxonArticles && isset($val["taxonomy"]["classification"]))
+                if ((count($matched_on_taxon)+count($matched_on_synonym))<$maxTaxonArticles && isset($val["taxonomy"]["classification"]))
                 {
 
                     foreach (array_slice(array_reverse($val["taxonomy"]["classification"]), 1, null) as $hKey=>$hVal)
@@ -1461,37 +1491,6 @@
             $this->taxonList = $d;
         }
 
-        public function effectuateImageSelection()
-        {
-            $d=[];
-
-            foreach ($this->taxonList as $val)
-            {
-                if ($val["object_data"])
-                {
-
-                    foreach ($val["object_data"] as $key => $object)
-                    {
-                        if (isset($this->imageSelection[$object["unitid"]]))
-                        {
-                            if (!isset($object["images"]))
-                            {
-                                $this->log(sprintf("taxon %s, unitid %s is present in image_selection but object has no images (!?)",$val["taxon"],$object["unitid"]),self::DATA_ERROR,"IMAGES");
-                            }
-                            else
-                            {
-                                $val["object_data"][$key]["images"]=
-                                    array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
-                            }
-                        }
-                    }    
-                }
-
-                $d[]=$val;
-            }
-            $this->taxonList = $d;
-        }
-
         public function addLeenobjectImages()
         {
             $d=[];
@@ -1504,16 +1503,11 @@
                     {
                         if ($object["is_leenobject"])
                         {
-                            $key = array_search($object["unitid"], array_column($this->leenobjecten, "registratienummer"));
+                            $lKey = array_search($object["unitid"], array_column($this->leenobjecten, "registratienummer"));
 
-                            if ($key!==false)
+                            if ($lKey!==false && !empty($this->leenobjecten[$lKey]["_afbeeldingen"]))
                             {
-                                $val["object_data"][$key]["images"]=
-                                    $this->leenobjecten[$key]["_afbeeldingen"];
-
-                                // $val["object_data"][$key]["images"]=
-                                //     array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
-
+                                $val["object_data"][$key]["images"] = $this->leenobjecten[$lKey]["_afbeeldingen"];
                             }
                         }
                     }    
@@ -1522,6 +1516,35 @@
                 $d[]=$val;
             }
 
+            $this->taxonList = $d;
+        }
+
+        public function effectuateImageSelection()
+        {
+            $d=[];
+
+            foreach ($this->taxonList as $val)
+            {
+                if ($val["object_data"])
+                {
+                    foreach ($val["object_data"] as $key => $object)
+                    {
+                        if (isset($this->imageSelection[$object["unitid"]]))
+                        {
+                            if (!isset($object["images"]))
+                            {
+                                $this->log(sprintf("taxon %s, unitid %s is present in image_selection but object has no images (!?)",$val["taxon"],$object["unitid"]),self::DATA_ERROR,"IMAGES");
+                            }
+                            else
+                            {
+                                $val["object_data"][$key]["images"] = array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
+                            }
+                        }
+                    }    
+                }
+
+                $d[]=$val;
+            }
             $this->taxonList = $d;
         }
 
@@ -1557,7 +1580,7 @@
                 }
                 else
                 {
-                    $key=array_search($val["taxon"], array_column($this->objectlessTaxa, "taxon"));
+                    $key=array_search($val["taxon"], array_column((array)$this->objectlessTaxa, "taxon"));
 
                     if ($key!==false)
                     {
@@ -1631,14 +1654,23 @@
                 $taxon_articles=0;
                 $classification_articles=0;
 
+                $maxTaxonArticles = $this->maxTaxonArticles;
+                $maxTotalArticles = $this->maxTotalArticles;
+
+                if (in_array($val["taxon"], $this->taxonArticlesSpecialCases))
+                {
+                    $maxTaxonArticles = $this->maxTaxonArticlesSpecialCases;
+                    $maxTotalArticles = $maxTaxonArticles > $maxTotalArticles ? $maxTaxonArticles : $maxTotalArticles;
+                }
+
                 foreach ($val["natuurwijzer_texts_matches"] as $match)
                 {
-                    if (count($linked_articles) >= $this->maxTotalArticles)
+                    if (count($linked_articles) >= $maxTotalArticles)
                     {
                         break;
                     }
 
-                    if ($taxon_articles >= $this->maxTaxonArticles)
+                    if ($taxon_articles >= $maxTaxonArticles)
                     {
                         break;
                     }
@@ -1652,18 +1684,18 @@
                     }
                 }
 
-                if ($taxon_articles < $this->maxTaxonArticles)
+                if ($taxon_articles < $maxTaxonArticles)
                 {
                     foreach ($val["natuurwijzer_texts_matches"] as $match)
                     {
-                        if (count($linked_articles) >= $this->maxTotalArticles)
+                        if (count($linked_articles) >= $maxTotalArticles)
                         {
                             break;
                         }
 
                         if (
                             $classification_articles >= $this->maxClassificationArticles || 
-                            ($classification_articles + $taxon_articles) >= $this->maxTaxonArticles
+                            ($classification_articles + $taxon_articles) >= $maxTaxonArticles
                         )
                         {
                             break;
@@ -1682,7 +1714,7 @@
 
                 foreach ($val["natuurwijzer_texts_matches"] as $match)
                 {
-                    if (count($linked_articles) >= $this->maxTotalArticles)
+                    if (count($linked_articles) >= $maxTotalArticles)
                     {
                         break;
                     }
@@ -1707,12 +1739,15 @@
         {
             return [
                 "maxTaxonArticles" => $this->maxTaxonArticles,
+                "maxTaxonArticlesSpecialCases" => $this->maxTaxonArticlesSpecialCases,
+                "taxonArticlesSpecialCases" => json_encode($this->taxonArticlesSpecialCases),
                 "maxClassificationArticles" => $this->maxClassificationArticles,
                 "maxTotalArticles" => $this->maxTotalArticles,
                 "roomsToMatchLinksOn" => $this->roomsToMatchLinksOn
             ];
         }
-            
+           
+
         public function generateJsonDocuments()
         {
             $this->dateStamp = date("c");
@@ -1772,6 +1807,8 @@
                     $this->maxNbaFields["fields"]
                 ),self::DATA_MESSAGE,"generator");
 
+            $this->_storeStatistics();
+
         }
 
         public function cleanUp()
@@ -1785,18 +1822,50 @@
             }
         }
 
+        public function storeEventTimestamp( $event )
+        {
+            $db = new SQLite3($this->SQLitePath["management"], SQLITE3_OPEN_READWRITE);
+
+            $sql = $db->prepare('delete from ' . self::TABLE_EVENTS . ' where event = ?');
+            $sql->bindValue(1, $event);
+            $sql->execute();
+
+            $sql = $db->prepare('insert into ' . self::TABLE_EVENTS .' (event) values (?)');
+            $sql->bindValue(1, $event);
+            $sql->execute();
+        }
+
+        public function getEventTimestamps()
+        {
+            $db = new SQLite3($this->SQLitePath["management"], SQLITE3_OPEN_READWRITE);
+
+            $events=[];
+            $sql = $db->prepare('SELECT * FROM ' . self::TABLE_EVENTS);
+            $results = $sql->execute();
+            while($row = $results->fetchArray())
+            {
+                $events[$row["event"]]=$row["event_timestamp"];
+            }
+            $db->close();
+            return $events;
+        }
+
         private function _addDocumentMetaData()
         {
-            $this->document["id"] = $this->documentId++;
+            $key = str_replace([" ","."], "_", strtolower($this->rawDocData["taxon"]));
+
+            $this->document["id"] = sprintf("%s-%s",$key,$this->language);
             $this->document["created"] = $this->dateStamp;
             $this->document["last_modified"] = $this->dateStamp;
             $this->document["language"] = $this->language;
-            $this->document["_key"] = str_replace([" ","."], "_", strtolower($this->rawDocData["taxon"]));
+            $this->document["_key"] = $key;
         }
 
         private function _addDocumentHeaderImage()
         {
             $block_name="header_image";
+
+            $this->document[$block_name] = [ "url" => $this->squaredImagePlaceholderURL ];
 
             if (isset($this->rawDocData["image_square"]))
             {
@@ -1805,13 +1874,10 @@
                     $this->document[$block_name] = [ "url" => $this->rawDocData["image_square"]["url"] ];
                 }
                 else
+                if (isset($this->rawDocData["image_square"]["filename"]))
                 {
                     $this->document[$block_name] = [ "url" => $this->squaredImageURLRoot . $this->rawDocData["image_square"]["filename"] ];
                 }
-            }
-            else
-            {
-                $this->document[$block_name] = [ "url" => $this->squaredImagePlaceholderURL ];
             }
         }
 
@@ -2013,7 +2079,6 @@
             {
                 foreach ($this->rawDocData["object_data"] as $object)
                 {
-
                     if (empty($object["unitid"]))
                     {
                         $this->log(sprintf("no unitid for object of %s",$this->rawDocData["taxon"]),self::DATA_ERROR,"generator");
@@ -2052,7 +2117,7 @@
 
                     $o["data"] = [
                         [ "label" => "Registratienummer", "text" => $object["unitid"] ],
-                        [ "label" => "Locatie", "text" => $room ]
+                        [ "label" => "Museumzaal", "text" => $room ]
                     ];
 
                     $key = array_search($object["unitid"], array_column((array)$this->NBA, 'unitid'));
@@ -2080,7 +2145,7 @@
                         );
                     }
 
-                    $o["data"] = array_values(array_filter($o["data"], function($a) { return !empty($a["text"]) && $a["text"]!="Not applicable"; }));
+                    $o["data"] = array_values(array_filter($o["data"], function($a) { return !empty($a["text"]) && strtolower($a["text"])!="not applicable"; }));
 
                     if (isset($this->rawDocData["topstukken"]))
                     {
@@ -2190,8 +2255,8 @@
                     "name" => $this->rawDocData["IUCN"]["name"],
                     "category" => $this->rawDocData["IUCN"]["category"],
                     "label" => $this->rawDocData["IUCN"]["category_label"],
-                    "url_link" => $this->iucnURLs["general_link"],
-                    "url_label" => $this->iucnURLs["general_link_label"],
+                    // "url_link" => $this->iucnURLs["general_link"],
+                    // "url_label" => $this->iucnURLs["general_link_label"],
                     "credit" => sprintf("Bron: IUCN (beoordelingsdatum: %s)",$this->rawDocData["IUCN"]["assessment_date"])
                 ];
             }
@@ -2380,12 +2445,24 @@
             ];
 
             $d[] = [
-                "label" => "Onderdeel/materiaaltype",
-                "text" =>  trim(implode(", ",array_filter([@$event["recordBasis"],@$event["kindOfUnit"],@$event["preparationType"]],function($a) { return !empty($a); })))
+                "label" => "Type object",
+                "text" =>  trim(
+                    implode("; ",
+                        array_filter(
+                            [
+                                $this->_nbaTranslateValue(@$document["recordBasis"]),
+                                $this->_nbaTranslateValue(@$document["kindOfUnit"]),
+                                $this->_nbaTranslateValue(@$document["preparationType"])
+                            ],
+                            function($a)
+                            { 
+                                return !empty($a) && !in_array(strtolower($a), ["not applicable"]);
+                            }
+                        )))
             ];
 
             $d[] = [
-                "label" => "Sexe",
+                "label" => "Sekse",
                 "text" =>  @$document["sex"]
             ];
 
@@ -2445,7 +2522,7 @@
                 ];
             }
 
-            $d = array_values(array_filter($d, function($a) { return !empty($a["text"]) && $a["text"]!="Not applicable"; }));
+            $d = array_values(array_filter($d, function($a) { return !empty($a["text"]) && strtolower($a["text"])!="not applicable"; }));
 
             uasort($d,function($a,$b)
             {
@@ -2453,11 +2530,11 @@
                     "Vindplaats"=>0,
                     "Verzamelaar(s)"=>1,
                     "Verzameld"=>2,
-                    "Sexe"=>3,
+                    "Sekse"=>3,
                     "Levensfase"=>4,
                     "Steentype"=>5,
                     "Geassocieerd mineraal"=>6,
-                    "Onderdeel/materiaaltype"=>7,
+                    "Type object"=>7,
                     "Typestatus"=>8,
                     "Collectienaam"=>9,
                 ];
@@ -2468,6 +2545,16 @@
             });
 
             return $d;
+        }
+
+        private function _nbaTranslateValue( $str )
+        {
+            if (empty($str))
+            {
+                return;
+            }
+
+            return $this->nba_valueTranslations[$str] ?? $str;
         }
 
         private function _reformatFormatting( $content )
@@ -2501,6 +2588,8 @@
 
             $sql = $db->prepare('insert into natuurwijzer_dekking (taxon,links) values (?,?)');
 
+            $db->exec( 'BEGIN;' );
+
             foreach ($this->taxonList as $key => $val)
             {
                 $links = array_map(function($a)
@@ -2515,7 +2604,9 @@
                 $sql->bindValue(1, $val["taxon"]);
                 $sql->bindValue(2, json_encode($links));
                 $sql->execute();
-            }            
+            }
+
+            $db->exec( 'COMMIT;' );
         }
 
         private function _storeTtikContentDekking( $log )
@@ -2526,12 +2617,161 @@
 
             $sql = $db->prepare('insert into ttik_content_dekking (taxon,status) values (?,?)');
 
+            $db->exec( 'BEGIN;' );
+
             foreach ($log as $key => $val)
             {
                 $sql->bindValue(1, $val["taxon"]);
                 $sql->bindValue(2, $val["status"]);
                 $sql->execute();
+            }
+
+            $db->exec( 'COMMIT;' );
+        }
+
+
+        private function _storeStatistics()
+        {
+            $per_room=[];
+            $per_taxon=[];
+
+            foreach ($this->taxonList as $val)
+            {
+                // $val["taxon"]
+
+                if (isset($val["image_square"]) && (isset($val["image_square"]["url"]) || isset($val["image_square"]["filename"])))
+                {
+                    $have_image=true;
+                }
+                else
+                {
+                    $have_image=false;
+                }
+
+                $have_description=false;
+
+                foreach ((array)$val["texts"]["ttik"] as $key => $tVal)
+                {
+                    if (isset($tVal["title"]) && $tVal["title"]=="Beschrijving")
+                    {                                
+                        $have_description=true;
+                    }
+                }
+
+                $per_taxon["taxon"]=isset($per_taxon["taxon"]) ? $per_taxon["taxon"]+1 : 1;
+
+                if ($have_image)
+                {
+                    $per_taxon["with_image"]=isset($per_taxon["with_image"]) ? $per_taxon["with_image"]+1 : 1;
+                }
+
+                if ($have_description)
+                {
+                    $per_taxon["with_description"]=isset($per_taxon["with_description"]) ? $per_taxon["with_description"]+1 : 1;
+                }
+
+                if ($have_image && $have_description)
+                {
+                    $per_taxon["with_image_and_description"]=isset($per_taxon["with_image_and_description"]) ? $per_taxon["with_image_and_description"]+1 : 1;
+                }
+
+
+                if (count((array)$val["object_data"])>0)
+                {
+                    foreach ((array)$val["object_data"] as $object)
+                    {
+                        $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
+                        $room =  $this->exhibitionRoomsPublic[$room] ?? $room;
+
+                        if ($seen_room_for_this_taxon[$room]===true)
+                        {
+                            continue;
+                        }
+
+                        $seen_room_for_this_taxon[$room] = true;
+
+                        $per_room[$room]["taxon"]=isset($per_room[$room]["taxon"]) ? $per_room[$room]["taxon"]+1 : 1;
+
+                        if ($have_image)
+                        {
+                            $per_room[$room]["with_image"]=
+                                isset($per_room[$room]["with_image"]) ? $per_room[$room]["with_image"]+1 : 1;
+                        }
+
+                        if ($have_description)
+                        {
+                            $per_room[$room]["with_description"]=
+                                isset($per_room[$room]["with_description"]) ? $per_room[$room]["with_description"]+1 : 1;
+                        }
+
+                        if ($have_image && $have_description)
+                        {
+                            $per_room[$room]["with_image_and_description"]=
+                                isset($per_room[$room]["with_image_and_description"]) ? $per_room[$room]["with_image_and_description"]+1 : 1;
+                        }
+
+                    }
+                }
+                else
+                {
+                    $room = "(taxa w/o objects)";
+                    $per_room[$room]["taxon"]=isset($per_room[$room]["taxon"]) ? $per_room[$room]["taxon"]+1 : 1;
+
+                    if ($have_image)
+                    {
+                        $per_room[$room]["with_image"]=isset($per_room[$room]["with_image"]) ? $per_room[$room]["with_image"]+1 : 1;
+                    }
+
+                    if ($have_description)
+                    {
+                        $per_room[$room]["with_description"]=isset($per_room[$room]["with_description"]) ? $per_room[$room]["with_description"]+1 : 1;
+                    }
+
+                    if ($have_image && $have_description)
+                    {
+                        $per_room[$room]["with_image_and_description"]=
+                            isset($per_room[$room]["with_image_and_description"]) ? $per_room[$room]["with_image_and_description"]+1 : 1;
+                    }
+
+                }
+
+                unset($seen_room_for_this_taxon);
+
+            }
+
+            $db = new SQLite3($this->SQLitePath["management"], SQLITE3_OPEN_READWRITE);
+            $sql = $db->prepare('delete from taxa_per_room');
+            $sql->execute();
+
+            $sql = $db->prepare('insert into taxa_per_room (room,taxon_count,with_image,with_description,with_image_and_description) values (?,?,?,?,?)');
+
+
+            $db->exec( 'BEGIN;' );
+
+            foreach ($per_room as $room => $val)
+            {
+                $sql->bindValue(1, empty($room) ? "?" : $room);
+                $sql->bindValue(2, $val["taxon"] ?? 0);
+                $sql->bindValue(3, $val["with_image"] ?? 0);
+                $sql->bindValue(4, $val["with_description"] ?? 0);
+                $sql->bindValue(5, $val["with_image_and_description"] ?? 0);
+                $sql->execute();
             }            
+
+            $db->exec( 'COMMIT;' );
+
+
+            $sql = $db->prepare('delete from taxa_overall');
+            $sql->execute();
+
+            $sql = $db->prepare('insert into taxa_overall (taxon_count,with_image,with_description,with_image_and_description) values (?,?,?,?)');
+
+            $sql->bindValue(1, $per_taxon["taxon"] ?? 0);
+            $sql->bindValue(2, $per_taxon["with_image"] ?? 0);
+            $sql->bindValue(3, $per_taxon["with_description"] ?? 0);
+            $sql->bindValue(4, $per_taxon["with_image_and_description"] ?? 0);
+            $sql->execute();
+
         }
 
         private function _checkMinimumRequirements()

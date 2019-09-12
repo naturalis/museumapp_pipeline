@@ -86,6 +86,9 @@ div {
     float: left;
     width: 600px;
 }
+#list {
+    font-size: 12px;
+}
 #preview {
     width: 100%;
     position:fixed;
@@ -115,11 +118,15 @@ div {
 .highlight {
     color:red;
 }
+#paginator { 
+    font-size: 12px;
+}
 #paginator a {
     display: inline-block;
     width: 30px;
     background: #eee;
     text-decoration: none;
+    text-align: center;
 }
 #paginator a:hover {
     background: #ddf;
@@ -129,6 +136,7 @@ div {
     <div id="header">
 <?php
     echo " <h4>Batch datum: ",$f["created"],", ",$f["total"]," documenten</h4>";
+
 ?>
     </div>
     <div>
@@ -136,7 +144,7 @@ div {
         <input type="button" value="bestanden verwijderen" onclick="deletePreviewFiles();">
     </div>
     <div>
-        <a href="index.php">index</a>
+
     </div>
 
     <div id="paginator">
@@ -146,9 +154,6 @@ div {
 
 ?>
     </div>
-
-
-
 
     <div id="main">
         <div id="list">
@@ -181,6 +186,23 @@ div {
 
 ?>
 </div>
+
+
+<?php
+    include_once("_menu.php");
+?>
+
+<style>
+div.menu {
+    position:relative;
+}
+div.menu ul {
+    padding-inline-start: 0px;
+}
+div.menu ul li {
+    text-align: left;
+}
+</style>
 
 <form method="post" id="theForm" action="index.php">
     <input type="hidden" id="action" name="action" value="generate">

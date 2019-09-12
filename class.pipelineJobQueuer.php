@@ -3,13 +3,21 @@
     class PipelineJobQueuer {
 
         private $source;
+        private $job;
         private $sources = [
-            "masterList",
-            "CRS",
-            "IUCN",
+            "tentoonstelling",
+            "crs",
+            "brahms",
+            "iucn",
+            "nba",
             "natuurwijzer",
             "topstukken",
-            "ttik"
+            "ttik",
+            "image_squares",
+            "leenobjecten",
+            "favourites",
+            "taxa_no_objects",
+            "maps"
         ];
         private $queuePath = '/data/queue/';
         private $publishPath;
@@ -20,6 +28,11 @@
             {
                 $this->source=$source;
             }
+        }
+
+        public function setJob( $job )
+        {
+            $this->job=$job;
         }
 
         public function setQueuePath( $path )
@@ -34,19 +47,64 @@
 
         public function queueRefreshJob()
         {
-            if (!is_null($this->source))
+            if (is_null($this->source))
             {
-                if (!$this->_findEarlierRefreshJob())
+                throw new Exception("unknown source", 1);
+            }
+
+            if (!in_array($this->source, $this->sources))
+            {
+                throw new Exception("unknown source: $this->source", 1);
+            }
+
+            if (!$this->_findEarlierRefreshJob())
+            {
+                $job = "refresh-". $this->source . "-". uniqid();
+                $this->jobfilename = $this->queuePath . $job;
+                if (!file_put_contents($this->jobfilename,json_encode([ "action" => "refresh", "source" => $this->source, "job" => $job ])))
                 {
-                    $this->jobfilename = $this->queuePath . "refresh-". $this->source . "-". uniqid();
-                    if (!file_put_contents($this->jobfilename,json_encode([ "action" => "refresh", "source" => $this->source ])))
-                    {
-                        throw new Exception(sprintf("couldn't create job file for %s",$this->source), 1);                        
-                    }                    
+                    throw new Exception(sprintf("couldn't create job file for %s",$this->source), 1);
                 }
                 else
                 {
-                    throw new Exception("earlier job file for $this->source exists", 1);                        
+                    chmod($this->jobfilename,0777);
+                }
+            }
+            else
+            {
+                throw new Exception("earlier job file exists", 1);
+            }
+        }
+
+        public function deleteRefreshJob()
+        {
+            if (is_null($this->source))
+            {
+                throw new Exception("unknown source", 1);
+            }
+
+            if (!in_array($this->source, $this->sources))
+            {
+                throw new Exception("unknown source: $this->source", 1);
+            }
+
+            $this->jobfilename = $this->queuePath . $this->job;
+
+            if (!file_exists($this->jobfilename))
+            {
+                throw new Exception(sprintf("couldn't find job file %s",$this->job), 1);
+            }
+            else
+            {
+                $file = json_decode(file_get_contents($this->jobfilename),true);
+
+                if ($file["action"]=="refresh")
+                {
+                    unlink($this->jobfilename);
+                }
+                else
+                {
+                    throw new Exception(sprintf("can't delete job (status %s)",$file["action"]), 1);
                 }
             }
         }
@@ -57,10 +115,9 @@
             $d=[];
             foreach ($files as $val)
             {
-                $f=explode("-",basename($val));
-                $d[]=$f[1];
+                $d[] = json_decode(file_get_contents($val),true);
             }
-            return array_unique($d);
+            return $d;
         }
 
         public function queuePublishJob()
@@ -77,6 +134,10 @@
             if (!file_put_contents($this->jobfilename,json_encode([ "action" => "publish", "source" => $this->publishPath ])))
             {
                 throw new Exception("couldn't create publishing job file", 1);                        
+            }
+            else
+            {
+                chmod($this->jobfilename,0777);
             }                    
         }
 
