@@ -35,7 +35,7 @@
             $this->job=$job;
         }
 
-        public function setQueuePath( $path )
+        public function setJobQueuePath( $path )
         {
             $this->queuePath=$path;
         }

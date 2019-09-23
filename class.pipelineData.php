@@ -2373,26 +2373,49 @@
 
             $event = $document["gatheringEvent"];
 
+            $str1 = trim(implode(", ",array_filter(
+                [
+                    @$event["locality"],
+                    @$event["city"],
+                    @$event["island"],
+                    @$event["provinceState"],
+                    @$event["country"],
+                    @$event["continent"],
+                    @$event["worldRegion"]
+                 ]   
+                ,function($a) { return !empty($a); })
+            ));
+
+            $str1 = implode(", ",array_unique(array_map(function($a) { return trim($a); },explode(",",str_replace(";", ",", $str1)))));
+            $str2 = trim($event["localityText"]);
+
+            similar_text(strtolower(preg_replace('/(\W)*/', "", $str1)),strtolower(preg_replace('/(\W)*/', "", $str2)),$pct);
+
+            if (empty($str1))
+            {
+                $vindplaats = $str2;
+            }
+            else
+            if (empty($str2))
+            {
+                $vindplaats = $str1;
+            }
+            else
+            if ($pct>=45)
+            {
+                $vindplaats = $str2;
+            }
+            else
+            {
+                $vindplaats = $str1 . ", " . $str2;
+            }
+
+            // $vindplaats = $str1 . " ||| " . $str2 . "||| (" . $pct . "): " . $vindplaats;
+
             $d[] = [
                 "label" => "Vindplaats",
-                "text" =>  
-                    isset($event["localityText"]) ?
-                        $event["localityText"] : 
-                        trim(implode(", ",array_filter(
-                            array_reverse(
-                                [
-                                    @$event["worldRegion"],
-                                    @$event["continent"],
-                                    @$event["country"],
-                                    @$event["provinceState"],
-                                    @$event["island"],
-                                    @$event["city"],
-                                    @$event["locality"]
-                                 ]   
-                            ),
-                            function($a) { return !empty($a); })
-                        ))
-                ];
+                "text" =>  $vindplaats
+            ];
 
             if (isset($event["gatheringPersons"]))
             {
