@@ -5,9 +5,9 @@
     $db["pass"] = isset($_ENV["MYSQL_PASSWORD"]) ? $_ENV["MYSQL_PASSWORD"] : null;
     $db["database"] = isset($_ENV["MYSQL_DATABASE"]) ? $_ENV["MYSQL_DATABASE"] : null;
 
-    $imgSelectorDbPath = isset($_ENV["IMAGE_SELECTOR_DB_PATH"]) ? $_ENV["IMAGE_SELECTOR_DB_PATH"] : null;
-    $imgSquaresDbPath = isset($_ENV["IMAGE_SQUARES_DB_PATH"]) ? $_ENV["IMAGE_SQUARES_DB_PATH"] : null;
-    $managementDataDbPath = isset($_ENV["MANAGEMENT_DATA_DB_PATH"]) ? $_ENV["MANAGEMENT_DATA_DB_PATH"] : null;
+    $imgSelectorDbPath = getEnv("IMAGE_SELECTOR_DB_PATH");
+    $imgSquaresDbPath = getEnv("IMAGE_SQUARES_DB_PATH");
+    $managementDataDbPath = getEnv('MANAGEMENT_DATA_PATH') . getEnv('MANAGEMENT_DATA_DB');
 
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');

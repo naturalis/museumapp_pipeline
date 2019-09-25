@@ -270,8 +270,8 @@ span.icon {
     $sources = [
         [ "label" => "Tentoonstellingsobjecten", "var" => $masterList, "refreshable" => true, "automatically_refreshable" => false, "data-source" => "tentoonstelling", "explain" => "unieke objecten in de masterlist; <a href=\"https://docs.google.com/spreadsheets/d/1hUZkP50gziO7fTCDnENJHbI4j-DLVxIjWcgTVUs1WkA/export?format=csv\">download csv</a> (vereist google-login & rechten)"],
         [ "label" => "Taxa", "var" => $taxonList, "explain" => "unieke taxa in de tentoonstellingsobjecten-lijst" ],
-        [ "label" => "CRS", "var" => $crs, "data-source" => "crs", "refreshable" => false, "automatically_refreshable" => false, "explain" => "afbeeldingen uit het CRS" ],
-        [ "label" => "Brahms", "var" => $brahms, "data-source" => "brahms", "refreshable" => true, "automatically_refreshable" => false, "explain" => "afbeeldingen uit Brahms" ],
+        [ "label" => "CRS", "var" => $crs, "data-source" => "crs", "refreshable" => true, "automatically_refreshable" => true, "explain" => "afbeeldingen uit het CRS" ],
+        [ "label" => "Brahms", "var" => $brahms, "data-source" => "brahms", "refreshable" => false, "explain" => "afbeeldingen uit Brahms" ],
         [ "label" => "IUCN-status", "var" => $iucn, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "iucn", "explain" => "IUCN statussen (klein aantal soorten heeft meer dan één status)" ],
         [ "label" => "NBA", "var" => $nba, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "nba", "explain" => "NBA-records, één per object" ],
         [ "label" => "Natuurwijzer", "var" => $natuurwijzer, "refreshable" => true, "automatically_refreshable" => true, "data-source" => "natuurwijzer", "explain" => "unieke natuurwijzer-artikelen getagged met zaal en/of taxon" ],

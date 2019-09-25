@@ -1,6 +1,6 @@
 <?php
 
-    $messageQueuePath = isset($_ENV["MESSAGE_QUEUE_PATH"]) ? $_ENV["MESSAGE_QUEUE_PATH"] : null;
+    $jobQueuePath = isset($_ENV["JOB_QUEUE_PATH"]) ? $_ENV["JOB_QUEUE_PATH"] : null;
 
     // include_once('auth.php');
     include_once('class.baseClass.php');
@@ -8,7 +8,7 @@
 
     $s = new PipelineJobQueuer;
 
-    $s->setQueuePath( $messageQueuePath );
+    $s->setJobQueuePath( $jobQueuePath );
     $prevQueuedJobs = $s->findEarlierJobs();
 
     echo json_encode($prevQueuedJobs);

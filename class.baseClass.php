@@ -65,7 +65,7 @@
             }
         }
 
-        public function log( $message, $level, $source=null )
+        public function log( $message, $level=self::DATA_MESSAGE, $source=null )
         {
             $this->messages[]=[ "timestamp" => date('d-M-Y H:i:s'), "message" => $message, "level" => $level, "source" => $source ];
         }
