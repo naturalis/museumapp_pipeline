@@ -5,7 +5,9 @@
         echo "this program must be run from the command line\n";
         exit(0);
     }
-      
+
+    ini_set('memory_limit','1024M');    
+
     $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : null;
     $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : null;
     $db["pass"] = isset($_ENV["MYSQL_PASSWORD"]) ? $_ENV["MYSQL_PASSWORD"] : null;
