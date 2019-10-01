@@ -90,20 +90,6 @@ function printQueuedJobs()
     // console.dir(queuedJobs);
 }
 
-function printQueueMessage()
-{
-    if(queueMessage)
-    {
-        $('.refresh').each(function()
-        {
-            if ($(this).attr('data-source')==queueMessage.source)
-            {
-                $(this).html(queueMessage.message).off("click").removeClass("clickable").addClass("queued");
-            }
-        })
-    }
-}
-
 function printHarvestNumbers()
 {
     for(i in harvestNumbers)

@@ -544,7 +544,7 @@
                     $a["_registratienummer_ic"]=strtolower($a["registratienummer"]);
                     $a["_afbeeldingen"]=array_map(function($a)
                         {
-                            return [ "url" => $this->leenobjectImageURLRoot . $a ];
+                            return [ "url" => $this->leenobjectImageURLRoot . trim($a) ];
                         },array_filter((array)json_decode($a["afbeeldingen"])));
                     return $a;
                 },$this->leenobjecten);

@@ -25,9 +25,9 @@ div.menu ul li {
         <li><a href="stats4.php">overzicht dekkingsgraad content</a></li>
         <li>&nbsp;</li>
         <li><b>tools</b> (vereisen aparte inlog)</li>
-        <li><a href="http://145.136.242.65:9000/" target="_blank">webinterface file server (voor CSV-uploads)</a></li>
-        <li><a href="http://145.136.242.65:8080/" target="_blank">selectie objectfoto's</a></li>
-        <li><a href="http://145.136.242.65:8081/" target="_blank">uitsnijden soortfoto's</a></li>
+        <li><a href="https://minio-museumapp.naturalis.nl" target="_blank">webinterface file server (voor CSV-uploads)</a></li>
+        <li><a href="https://selector-museumapp.naturalis.nl" target="_blank">selectie objectfoto's</a></li>
+        <li><a href="https://squares-museumapp.naturalis.nl" target="_blank">uitsnijden soortfoto's</a></li>
     </ul>
 
 </div>

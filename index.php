@@ -182,68 +182,10 @@
   crossorigin="anonymous"></script>
 
 <script type="text/javascript" src="js/main.js"></script>
+
 <link rel="stylesheet" type="text/css" href="//fonts.googleapis.com/css?family=Open+Sans" />
-<style>
-body {
-    font-family: Open Sans;
-}
-.title {
-    display: inline-block;
-    padding: 0;
-    margin: 0 12px 0 2px;
-}
-a.refresh {
-    font-size: 10px;
-}
-#numbers table tr:hover {
-    background-color: #eee;
-}
-#numbers table tr td:nth-child(2) {
-    text-align: right;
-}
-div {
-    margin-bottom: 10px;
-}
-.clickable {
-    cursor: pointer;
-}
-.queued {
-    color: green;
-    font-size: 10px;
-}
-tr td {
-    height: 30px;
-    padding: 0 5px 0 5px;
-}
-tr.titles td {
-    font-weight: bold;
-    background-color: #eee;
-}
-td.harvest, td.explain {
-    font-size: 10px;
-}
-div.section {
-    display:none;
-}
-span.section-head {
-    display:block;
-    font-weight: bold;
-    cursor: pointer;
-}
-hr {
-    width: 350px;
-    text-align: left;
-}
-span.refresh-legend {
-    display: block;
-    font-size: 10px;
-}
-span.icon {
-    display: inline-block;
-    font-size: 12px;
-    width: 20px;
-}
-</style>
+<link rel="stylesheet" type="text/css" href="css/main.css" />
+
 </head>
 <body>
     <div>
@@ -360,6 +302,12 @@ span.icon {
         echo $publishMessage["message"],"\n";
     }
 
+    if (isset($queueMessage))
+    {
+        echo "<h3>melding tijdens refresh:</h3>";
+        echo $queueMessage["message"],"\n";
+    }
+
 ?>
 </div>
 
@@ -389,10 +337,6 @@ $( document ).ready(function()
         }
         unqueuePipelineSourceRefresh($(this));
     })
-
-
-    // printPreviousQueuedJobs();
-    // printQueueMessage();
 
     runQueueMonitor();
     setInterval(runQueueMonitor, 5000);

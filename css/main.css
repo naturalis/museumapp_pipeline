@@ -1,0 +1,58 @@
+body {
+    font-family: Open Sans;
+}
+.title {
+    display: inline-block;
+    padding: 0;
+    margin: 0 12px 0 2px;
+}
+a.refresh {
+    font-size: 10px;
+}
+#numbers table tr:hover {
+    background-color: #eee;
+}
+#numbers table tr td:nth-child(2) {
+    text-align: right;
+}
+div {
+    margin-bottom: 10px;
+}
+.clickable {
+    cursor: pointer;
+}
+.queued {
+    color: green;
+    font-size: 10px;
+}
+tr td {
+    height: 30px;
+    padding: 0 5px 0 5px;
+}
+tr.titles td {
+    font-weight: bold;
+    background-color: #eee;
+}
+td.harvest, td.explain {
+    font-size: 10px;
+}
+div.section {
+    display:none;
+}
+span.section-head {
+    display:block;
+    font-weight: bold;
+    cursor: pointer;
+}
+hr {
+    text-align: left;
+}
+span.refresh-legend {
+    display: block;
+    font-size: 10px;
+}
+span.icon {
+    display: inline-block;
+    font-size: 12px;
+    width: 20px;
+}

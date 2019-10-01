@@ -21,6 +21,7 @@
         ];
         private $queuePath = '/data/queue/';
         private $publishPath;
+        private $lockFile = '.update_lock';
 
         public function setSource( $source )
         {
@@ -55,6 +56,11 @@
             if (!in_array($this->source, $this->sources))
             {
                 throw new Exception("unknown source: $this->source", 1);
+            }
+
+            if ($this->_getLockFile())
+            {
+                throw new Exception(sprintf("lock file exists (%s)",$this->_getLockFile()), 1);
             }
 
             if (!$this->_findEarlierRefreshJob())
@@ -139,6 +145,18 @@
             {
                 chmod($this->jobfilename,0777);
             }                    
+        }
+
+        private function _getLockFile()
+        {
+            if (file_exists($this->queuePath . $this->lockFile))
+            {
+                return file_get_contents($this->queuePath . $this->lockFile);
+            }
+            else
+            {
+                return false;
+            }
         }
 
         private function _findEarlierRefreshJob()
