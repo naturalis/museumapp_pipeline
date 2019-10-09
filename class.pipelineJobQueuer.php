@@ -17,7 +17,8 @@
             "leenobjecten",
             "favourites",
             "taxa_no_objects",
-            "maps"
+            "maps",
+            "ttik_photo_species"
         ];
         private $queuePath = '/data/queue/';
         private $publishPath;

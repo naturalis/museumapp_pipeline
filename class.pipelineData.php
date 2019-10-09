@@ -16,6 +16,8 @@
         private $leenobjecten;
         private $favourites;
         private $objectlessTaxa;
+        private $ttikSpeciesPhotos;
+        private $maps;
         private $exhibitionRooms_NW;
         private $exhibitionRooms_ML;
         private $overallTextOccurrences=[];
@@ -181,6 +183,7 @@
         const TABLE_SQUARED_IMAGES = 'squared_images_new';
         const TABLE_MAPS = 'maps';
         const TABLE_EVENTS = 'events';
+        const TABLE_TTIK_PHOTO_SPECIES = 'ttik_photo_species';
 
         const TABLE_MASTER_NAME_COL = 'SCname controle';
         const PREFIX_LEENOBJECTEN = 'leen.';
@@ -581,6 +584,12 @@
             $this->log(sprintf("found %s maps",count($this->maps)),self::DATA_MESSAGE,"init");
         }
 
+        public function setTTIKSpeciesPhoto()
+        {
+            $this->ttikSpeciesPhotos = $this->getMySQLSource(self::TABLE_TTIK_PHOTO_SPECIES);
+            $this->log(sprintf("found %s TTIK species photos",count($this->ttikSpeciesPhotos)),self::DATA_MESSAGE,"init");
+        }
+
         public function getMasterList()
         {
             return [
@@ -701,6 +710,14 @@
             return [
                 "data" => $this->maps,
                 "count" => count((array)$this->maps)
+            ];
+        }
+
+        public function getTtikSpeciesPhotos()
+        {
+            return [
+                "data" => $this->ttikSpeciesPhotos,
+                "count" => count((array)$this->ttikSpeciesPhotos)
             ];
         }
 
@@ -1580,11 +1597,13 @@
                 }
                 else
                 {
-                    $key=array_search($val["taxon"], array_column((array)$this->objectlessTaxa, "taxon"));
+                    // $key=array_search($val["taxon"], array_column((array)$this->objectlessTaxa, "taxon"));
+                    $key=array_search($val["taxon"], array_column((array)$this->ttikSpeciesPhotos, "taxon"));
 
                     if ($key!==false)
                     {
-                        $val["image_square"]["url"] =  $this->objectlessTaxa["$key"]["main_image"];
+                        // $val["image_square"]["url"] =  $this->objectlessTaxa[$key]["main_image"];
+                        $val["image_square"]["url"] =  $this->ttikSpeciesPhotos[$key]["main_image"];
                         $added++;
                     }
                 }

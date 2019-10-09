@@ -63,6 +63,7 @@
     $d->setLeenObjecten();
     $d->setFavourites();
     $d->setObjectlessTaxa();
+    $d->setTTIKSpeciesPhoto();
     $d->setMaps();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
@@ -170,6 +171,7 @@
     $favourites = $d->getFavourites();
     $objectlessTaxa = $d->getObjectlessTaxa();
     $maps = $d->getMaps();
+    $ttikSpeciesPhotos = $d->getTtikSpeciesPhotos();
 
     $fPreview = $b->getFileLinks( "preview" );
     // $prevQueuedJobs = $s->findEarlierJobs();
@@ -226,6 +228,7 @@
         [ "label" => "Leenobjecten", "var" => $leenObjecten, "data-source" => "leenobjecten", "refreshable" => true, "automatically_refreshable" => false, "explain" => "aantal leenobjecten (hopelijk met afbeeldingen)" ],
         [ "label" => "Favourites", "var" => $favourites, "data-source" => "favourites", "refreshable" => true, "automatically_refreshable" => false, "explain" => "favoriete objecten, default bij leeg zoekscherm" ],
         [ "label" => "Taxa w/o objects", "var" => $objectlessTaxa, "data-source" => "taxa_no_objects", "refreshable" => true, "automatically_refreshable" => false, "explain" => "taxa zonder objecten" ],
+        [ "label" => "Vierkante afbeeldingen via TTIK", "var" => $ttikSpeciesPhotos, "data-source" => "ttik_photo_species", "refreshable" => true, "automatically_refreshable" => false, "explain" => "vierkante soortafbeeldingen in TTIK" ],
         [ "label" => "Maps", "var" => $maps, "data-source" => "maps", "refreshable" => true,  "automatically_refreshable" => false, "explain" => "verspreidingskaarten" ],
     ];
 

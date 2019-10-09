@@ -73,6 +73,7 @@
     $d->setLeenObjecten();
     $d->setFavourites();
     $d->setObjectlessTaxa();
+    $d->setTTIKSpeciesPhoto();
     $d->setMaps();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
