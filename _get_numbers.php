@@ -37,6 +37,7 @@
     $d->setLeenObjecten();
     $d->setFavourites();
     $d->setObjectlessTaxa();
+    $d->setTTIKSpeciesPhoto();
     $d->setMaps();
     $d->makeTaxonList();
     $d->addTaxonomyToTL();
@@ -58,6 +59,7 @@
     $favourites = $d->getFavourites();
     $objectlessTaxa = $d->getObjectlessTaxa();
     $maps = $d->getMaps();
+    $ttikSpeciesPhotos = $d->getTtikSpeciesPhotos();
 
     echo
         json_encode( [
@@ -76,5 +78,5 @@
             'favourites' => [ "count" => $favourites["count"], "date" => $favourites["harvest_date"] ],
             'taxa_no_objects' => [ "count" => $objectlessTaxa["count"], "date" => $objectlessTaxa["harvest_date"] ],
             'maps' => [ "count" => $maps["count"], "date" => $maps["harvest_date"] ],
+            'ttik_photo_species' => [ "count" => $ttikSpeciesPhotos["count"], "date" => $ttikSpeciesPhotos["harvest_date"] ]
         ] );
-
