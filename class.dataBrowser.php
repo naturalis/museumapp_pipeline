@@ -41,11 +41,20 @@ CREATE TABLE IF NOT EXISTS "document_hashes" (
             return [ "data" => array_slice($this->files, $offset, $length), "total" => count($this->files), "created" => $j["created"] ];
         }
 
-        public function getFile( $state, $file )
+        public function getFile( $state, $filename )
         {
             $this->state = $state;
-            $f = file_get_contents($this->jsonPath[$this->state] . $file);
-            return $f;
+
+            $file = $this->jsonPath[$this->state] . $filename;
+
+            if (!file_exists($file))
+            {
+                throw new Exception(sprintf("file %s doesn't exist",$filename), 1);
+            }
+            else
+            {
+                return file_get_contents($file);
+            }
         }
 
         public function deletePreviewFiles()

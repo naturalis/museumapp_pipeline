@@ -34,10 +34,15 @@ function deletePreviewFiles()
 function loadPreview(ele)
 {
     var filename = $(ele).attr('data-filename');
-
-    $('#preview .title').html(filename);
+    
     $('#list>ul>li>span').removeClass('highlight');
+    $(ele).addClass('highlight');
 
+    loadFilePreview(filename);
+}
+
+function loadFilePreview(filename)
+{
     $.ajax({
         method: "POST",
         url: "ajax.php",
@@ -46,14 +51,23 @@ function loadPreview(ele)
     .done(function( data )
     {
         json=$.parseJSON(data);
+        $('#preview .title').html(filename);
         $('#json-renderer').jsonViewer(json, options);
         $('#preview .title,.toggle').toggle(true);
-        $(ele).addClass('highlight');
     });
 }
-function toggleCollapse()
+
+function toggleCollapse(state)
 {
-    options.collapsed = !options.collapsed;
+    if (!state)
+    {
+        options.collapsed = !options.collapsed;    
+    }
+    else
+    {
+        options.collapsed = state;
+    }
+    
     $('#json-renderer').jsonViewer(json, options);    
     $('#preview .toggle').html(options.collapsed ? "expand all" : "collapse");
 }
@@ -157,5 +171,13 @@ function unqueuePipelineSourceRefresh(ele)
     }
 }
 
-
-
+function openDocumentByQueryKey()
+{
+    const urlParams = new URLSearchParams(window.location.search);
+    var filename = urlParams.get('key');
+    if (filename)
+    {
+        toggleCollapse(false);
+        loadFilePreview(filename.toLowerCase().replace(" ","_").replace(".json","")+".json");
+    }
+}

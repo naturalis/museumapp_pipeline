@@ -208,5 +208,12 @@ div.menu ul li {
     <input type="hidden" id="action" name="action" value="generate">
 </form>
 
+<script>
+$( document ).ready(function()
+{
+    openDocumentByQueryKey();
+});
+</script>
+
 </body>
 </html>

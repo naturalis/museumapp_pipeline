@@ -2504,6 +2504,11 @@
             ];
 
             $d[] = [
+                "label" => "Aantal",
+                "text" =>  isset($document["numberOfSpecimen"]) && $document["numberOfSpecimen"] > 1 ? $document["numberOfSpecimen"] : null
+            ];
+
+            $d[] = [
                 "label" => "Sekse",
                 "text" =>  @$document["sex"]
             ];
@@ -2577,8 +2582,9 @@
                     "Steentype"=>5,
                     "Geassocieerd mineraal"=>6,
                     "Type object"=>7,
-                    "Typestatus"=>8,
-                    "Collectienaam"=>9,
+                    "Typestatus"=>9,
+                    "Collectienaam"=>10,
+                    "Aantal"=>8,
                 ];
 
                 $a = $order[$a["label"]] ?? 99;

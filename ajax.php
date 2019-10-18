@@ -15,5 +15,10 @@
         $d->setJsonPath( "preview", $jsonPreviewPath );
         $d->setJsonPath( "publish", $jsonPublishPath );
 
-        echo $d->getFile( "preview", $file );
+        try {
+            echo $d->getFile( "preview", $file );
+        } catch (Exception $e) {
+            echo json_encode( [ "error" => $e->getMessage() ] );
+        }
+       
     }
