@@ -2505,7 +2505,7 @@
 
             $d[] = [
                 "label" => "Aantal",
-                "text" =>  isset($document["numberOfSpecimen"]) && $document["numberOfSpecimen"] > 1 ? $document["numberOfSpecimen"] : null
+                "text" =>  isset($document["numberOfSpecimen"]) && $document["numberOfSpecimen"] > 1 ? strval($document["numberOfSpecimen"]) : null
             ];
 
             $d[] = [
