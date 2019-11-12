@@ -8,3 +8,4 @@ COPY . /var/www/html/
 RUN ln -s /data/squared_images/ squared_images
 RUN ln -s /data/leenobject_images/ leenobject_images
 RUN ln -s /data/stubs/ stubs
+RUN ln -s /data/iucn_maps/ iucn_maps
