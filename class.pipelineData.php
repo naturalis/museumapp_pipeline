@@ -1557,6 +1557,10 @@
                                 $val["object_data"][$key]["images"] = array_intersect($this->imageSelection[$object["unitid"]],$object["images"]);
                             }
                         }
+                        else
+                        {
+                            $val["object_data"][$key]["images"] = null;
+                        }
                     }    
                 }
 
