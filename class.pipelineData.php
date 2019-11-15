@@ -232,8 +232,8 @@
             $this->masterList =
                 array_map(function($a)
                 {
-                    $a["_is_leenobject"] =
-                        substr($a["Registratienummer"],0,strlen(self::PREFIX_LEENOBJECTEN))==self::PREFIX_LEENOBJECTEN;
+                    // $a["_is_leenobject"] =
+                    //     substr($a["Registratienummer"],0,strlen(self::PREFIX_LEENOBJECTEN))==self::PREFIX_LEENOBJECTEN;
 
                     $prefix = @explode(".",$a["Registratienummer"])[0];
 
@@ -551,6 +551,15 @@
                         },array_filter((array)json_decode($a["afbeeldingen"])));
                     return $a;
                 },$this->leenobjecten);
+
+            $leenobject_nummers = array_column($this->leenobjecten, "_registratienummer_ic");
+
+            $this->masterList =
+                array_map(function($a) use ($leenobject_nummers)
+                {
+                    $a["_is_leenobject"] = in_array(strtolower($a["Registratienummer"]), $leenobject_nummers);
+                    return $a;
+                },$this->masterList);
 
             $this->log(sprintf("found %s leenobjecten entries",count($this->leenobjecten)),self::DATA_MESSAGE,"init");
         }
