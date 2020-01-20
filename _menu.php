@@ -28,6 +28,11 @@ div.menu ul li {
         <li><a href="https://minio-museumapp.naturalis.nl" target="_blank">webinterface file server (voor CSV-uploads)</a></li>
         <li><a href="https://selector-museumapp.naturalis.nl" target="_blank">selectie objectfoto's</a></li>
         <li><a href="https://squares-museumapp.naturalis.nl" target="_blank">uitsnijden soortfoto's</a></li>
+        <li>&nbsp;</li>
+        <li><b>API & endpoints</b></li>
+        <li><a href="https://pipeline-museumapp.naturalis.nl/brahms.php" target="_blank">Brahms nummers</a></li>
+        <li><a href="https://pipeline-museumapp.naturalis.nl/brahms_images.php" target="_blank">Brahms unitiID's/medialib URL's</a></li>
+        <li><a href="https://github.com/naturalis/museumapp_pipeline_api" target="_blank">MuseumApp API doc</a></li>
     </ul>
-
 </div>
+
