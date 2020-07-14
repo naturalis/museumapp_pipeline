@@ -2407,7 +2407,7 @@
                 $this->document[$block_name]= [
                     "image_url" => $this->maps[$key]["url"],
                     "label" => @$this->maps[$key]["text_".$l],
-                    "credit" => $this->maps[$key]["citation"]
+                    "credit" => sprintf($this->translate("Bron: %s"),$this->maps[$key]["citation"])
                 ];
 
                 $this->log(sprintf("added map for '%s'",$this->rawDocData["taxon"]),self::DATA_MESSAGE,"maps");

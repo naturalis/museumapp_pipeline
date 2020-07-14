@@ -70,6 +70,7 @@
                         "Onzeker" => "Data deficient",
                         "Niet geëvalueerd" => "Not evaluated",
                         "Niet van toepassing" => "Not applicable",
+                        "Bron: %s" => "Source: %s",
 
                         // museumzalen
                         "De dood" => "Death",
