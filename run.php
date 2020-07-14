@@ -30,6 +30,8 @@
     $urlSquaredImageRoot = isset($_ENV["URL_SQUARES_IMAGE_ROOT"]) ? $_ENV["URL_SQUARES_IMAGE_ROOT"] : null;
     $urlLeenImageRoot = isset($_ENV["URL_LEENOBJECTEN_IMAGE_ROOT"]) ? $_ENV["URL_LEENOBJECTEN_IMAGE_ROOT"] : null;
 
+    $autoTranslationText_EN = isset($_ENV["AUTO_TRANSLATION_TEXT"]) ? $_ENV["AUTO_TRANSLATION_TEXT"] : null;
+
     $generateFiles=true;
     
     if (getopt("",["generate-files:"]))
@@ -56,6 +58,8 @@
     $d->setObjectImagePlaceholderURL( $urlObjectPlaceholder );
     $d->setSquaredImageURLRoot( $urlSquaredImageRoot );
     $d->setLeenobjectImageURLRoot( $urlLeenImageRoot );
+    $d->setAutoTranslationText( 'en', $autoTranslationText_EN );
+    // $d->setUseVerifiedTranslationsOnly( true );
 
     $d->init();
 

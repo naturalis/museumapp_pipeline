@@ -22,6 +22,7 @@ div.menu ul li {
         <li><a href="stats.php">natuurwijzer &rarr; taxa / zalen</a></li>
         <li><a href="stats2.php">taxa &rarr; natuurwijzer</a></li>
         <li><a href="stats3.php">taxa: content dekking (TTIK)</a></li>
+        <li><a href="ttik_translations.php">taxa: TTIK translations</a></li>
         <li><a href="stats4.php">overzicht dekkingsgraad content</a></li>
         <li>&nbsp;</li>
         <li><b>tools</b> (vereisen aparte inlog)</li>

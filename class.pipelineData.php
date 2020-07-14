@@ -2,6 +2,9 @@
 
     class PipelineData extends BaseClass
     {
+        public $language;
+        public $languageName;
+
         private $masterList;
         private $masterListObjectIndex=[];
         private $CRS;
@@ -28,6 +31,8 @@
         private $rawDocData=[];
         private $document=[];
         private $documentId=1;
+        private $useVerifiedTranslationsOnly=false;
+        private $autoTranslationTexts=[];
 
         private $maxTaxonArticles=5;
         private $maxTaxonArticlesSpecialCases=8;
@@ -36,48 +41,12 @@
         private $maxTotalArticles=5;
         private $maxNbaFields=[ "taxon" => null, "unitid" => null, "fields" => 0 ];
         private $availableLanguages = [ "nl" => "dutch", "en" => "english" ];
+        private $debug_masterListSCnames = [];
 
-        private $debug_masterListSCnames = [
-            // "Ovis aries",
-            // "Tyrannosaurus rex",
-            // "Plateosaurus engelhardti",
-            // "smaragd",
-            // "Lemur catta",
-            // "Panthera leo",
-            // "Bos taurus",
-            // "Bubalus bubalis",
-            // "Acinonyx jubatus",
-            // "Cirostrema crassicostatum",
-            // "Gelasimus tetragonon",
-            // "Hylopetes sagitta",
-            // "Ursus arctos syriacus",
-            // "nefriet",
-            // "rutiel",
-            // "Mesolimulus walchi",
-            // "Accipiter nisus",
-            // "Triceratops spec.",
-            // "agaat",
-            // "amazoniet",
-            // "turf",
-            // "Lucanus cervus",
-            // "Giraffa reticulata",
-            // "Puma concolor",
-            // "Abrus precatorius",
-            // "Aschiphasma annulipes Westwood, 1834",
-            // "Amazilia fimbriata",
-            // "Chrysolampis mosquitus",
-            // "Colibri coruscans",
-            // "Pelophylax klepton esculentus",
-            // "Pelophylax spec.",
-            // "Ursus maritimus",
-            // "Canis lupus",
-            // "Falco vespertinus",
-            // "Erythrura gouldiae",
-            // "Tursiops truncatus",
-            // "Cnemidophorus lemniscatus",
-            // "Polyplectron bicalcaratum",
-            // "Rhea americana",
-        ];
+        private $squaredImagePlaceholderURL;
+        private $objectImagePlaceholderURL;
+        private $squaredImageURLRoot;
+        private $leenobjectImageURLRoot;
 
         // https://nl.wikipedia.org/wiki/Rode_Lijst_van_de_IUCN
         private $IUCN_statusTranslations = [
@@ -162,10 +131,11 @@
             "general_link_label" => "Lees meer over de beschermingsstatus",
         ];
 
-        private $squaredImagePlaceholderURL;
-        private $objectImagePlaceholderURL;
-        private $squaredImageURLRoot;
-        private $leenobjectImageURLRoot;
+        private $ttikCategoryNames = [
+            "where" => "Leefgebied",
+            "when" => "Leefperiode",
+            "description" => "Beschrijving"
+        ];
 
         const TABLE_MASTER = 'tentoonstelling';
         const TABLE_CRS = 'crs';
@@ -174,6 +144,7 @@
         const TABLE_NATUURWIJZER = 'natuurwijzer';
         const TABLE_TOPSTUKKEN = 'topstukken';
         const TABLE_TTIK = 'ttik';
+        const TABLE_TTIK_TEXTS = 'ttik_translations';
         const TABLE_NBA = 'nba';
         const TABLE_LEENOBJECTEN = 'leenobjecten';
         const TABLE_FAVOURITES = 'favourites';
@@ -191,17 +162,17 @@
 
         public function init()
         {
-            $this->setLanguage( $this->languageDefault );
             $this->checkJsonPaths();
             $this->_checkImageURLs();
             $this->connectDatabase();
         }
 
-        public function setLanguage( $language )
+        public function setLanguage( $languageCode )
         {
-            if (isset($this->availableLanguages[$language]))
+            if (isset($this->availableLanguages[$languageCode]))
             {
-                $this->language = $language;    
+                $this->language = $languageCode;
+                $this->languageName = $this->availableLanguages[$languageCode];
             }
         }
 
@@ -223,6 +194,30 @@
         public function setLeenobjectImageURLRoot( $url )
         {
             $this->leenobjectImageURLRoot = $url;
+        }
+
+        public function setUseVerifiedTranslationsOnly( $state )
+        {
+            if (is_bool($state))
+            {
+                $this->useVerifiedTranslationsOnly = $state;
+            }
+        }
+
+        public function setAutoTranslationText( $language, $txt )
+        {
+            if (!empty($txt))
+            {
+                $this->autoTranslationTexts[$language] = $txt;
+            }
+        }
+
+        public function setTestTaxa( $testTaxa )
+        {
+            if (!is_null($testTaxa) && is_array($testTaxa))
+            {
+                $this->debug_masterListSCnames = $testTaxa;
+            }
         }
 
         public function setMasterList()
@@ -376,6 +371,7 @@
         public function setTTIK()
         {
             $this->ttik = $this->getMySQLSource(self::TABLE_TTIK);
+            $ttik_texts = $this->getMySQLSource(self::TABLE_TTIK_TEXTS);
 
             $d=[];
             foreach($this->ttik as $val)
@@ -401,7 +397,25 @@
                         },(array)json_decode($val["synonyms"],true));                    
                 }
 
-                $val["description"]=json_decode($val["description"],true);
+                // $val["description"]=json_decode($val["description"],true);
+
+                $descriptions = array_filter($ttik_texts,function($a) use ($val)
+                {
+                    return (
+                        ($val["taxon_id"]==$a["taxon_id"]) && 
+                        (
+                            ($this->useVerifiedTranslationsOnly && $a["verified"]=="1") || 
+                            !$this->useVerifiedTranslationsOnly
+                        )
+                    );
+                });
+
+                $val["descriptions"] = array_map(function($a)
+                {
+                    unset($a["id"], $a["taxon_id"], $a["inserted"]);
+                    $a["description"]=json_decode($a["description"],true);
+                    return $a;
+                },$descriptions);
 
                 if (preg_match('/(\s){1,}(spec\.|sp\.)$/', $val["taxon"]))
                 {
@@ -579,7 +593,6 @@
 
             $this->log(sprintf("found %s favourites",count($this->favourites)),self::DATA_MESSAGE,"init");
         }
-
 
         public function setObjectlessTaxa()
         {
@@ -907,7 +920,6 @@
 
         public function addObjectDataToTL()
         {
-
             $d=[];
 
             foreach ((array)$this->taxonList as $val)
@@ -1086,27 +1098,20 @@
                         $key=0;
                     }
 
-                    $category = $IUCN[$key]["category"];
-
                     // NA, NE en DD worden niet weergegeven in de app (maar wel geleverd en door Q42 geaccepteerd)
-                    // if (!in_array($category,["NA","NE","DD"]))
-                    {
-                        $population_trend = $IUCN[$key]["population_trend"];
-                        $assessment_date = $IUCN[$key]["assessment_date"];
-                        $category_label = $this->IUCN_statusTranslations[$category];
-                        $trend_label = $this->IUCN_trendTranslations[$population_trend];
-                        $name = "Beschermingsstatus" . ($IUCN[$key]["region"]!="Global" ? " (".$IUCN[$key]["region"].")" : "");
-                        
-                        $val["IUCN"] =
-                            [
-                                "name" => $name,
-                                "category" => $category,
-                                "population_trend" => $population_trend,
-                                "category_label" => $category_label,
-                                "trend_label" => $trend_label,
-                                "assessment_date" => $assessment_date,
-                            ];
-                    }
+                    // if (!in_array($IUCN[$key]["category"],["NA","NE","DD"]))
+                    // {
+                    $val["IUCN"] =
+                        [
+                            "name" => "Beschermingsstatus",
+                            "name_addendum" => ($IUCN[$key]["region"]!="Global" ? " (".$IUCN[$key]["region"].")" : ""),
+                            "category" => $IUCN[$key]["category"],
+                            "population_trend" => $IUCN[$key]["population_trend"],
+                            "category_label" => $this->IUCN_statusTranslations[$IUCN[$key]["category"]],
+                            "trend_label" => $this->IUCN_trendTranslations[$population_trend],
+                            "assessment_date" => $IUCN[$key]["assessment_date"],
+                        ];
+                    // }
                 }
                 $d[]=$val;
             }
@@ -1172,9 +1177,9 @@
                     $key = $val["taxonomy"]["_match"]["_local_key"];
                 }
 
-                if (!empty($this->ttik[$key]["description"]))
+                if (!empty($this->ttik[$key]["descriptions"]))
                 {
-                    $val["texts"]["ttik"]=$this->ttik[$key]["description"];
+                    $val["texts"]["ttik"]=$this->ttik[$key]["descriptions"];
                 }
                 else
                 {
@@ -1186,9 +1191,9 @@
                         }
                         $key = array_search(strtolower($cVal["taxon"]), array_column($this->ttik, "_nomen_ic"));
 
-                        if (!empty($this->ttik[$key]["description"]))
+                        if (!empty($this->ttik[$key]["descriptions"]))
                         {
-                            $val["texts"]["ttik"]=$this->ttik[$key]["description"];
+                            $val["texts"]["ttik"]=$this->ttik[$key]["descriptions"];
                         }
                     }
                 }
@@ -1200,10 +1205,10 @@
                 }
                 else
                 {
-                    foreach ($val["texts"]["ttik"] as $tKey => $tVal)
-                    {
-                        $val["texts"]["ttik"][$tKey]["body"] = trim($this->_reformatFormatting($tVal["body"]));
-                    }
+                    // foreach ($val["texts"]["ttik"] as $tKey => $tVal)
+                    // {
+                    //     $val["texts"]["ttik"][$tKey]["body"] = trim($this->_reformatFormatting($tVal["body"]));
+                    // }
                     
                     $log[] = [ "taxon" => $val["taxon"], "status" => "got content" ];
                 }
@@ -1764,7 +1769,6 @@
             }
 
             $this->_storeNatuurwijzerDekking();
-
         }
 
         public function getArticleSettings()
@@ -1778,7 +1782,6 @@
                 "roomsToMatchLinksOn" => $this->roomsToMatchLinksOn
             ];
         }
-           
 
         public function generateJsonDocuments()
         {
@@ -1797,36 +1800,40 @@
 
                 $this->rawDocData = $val;
 
-                $this->_addDocumentMetaData();
-                $this->_addDocumentFavouriteRank();
-                $this->_addDocumentHeaderImage();
-                $this->_addDocumentTitles();
-                $this->_addDocumentDefinitionsBlock();
-                $this->_addDocumentIUCN();
-                $this->_addDocumentContent();
-                $this->_addDocumentObjects();
-                $this->_addDocumentLinks();
-                $this->_addDocumentDistributionMap();
-                $this->_addDocumentReciprocalLinkText();
-
-                if (!$this->_checkMinimumRequirements())
+                foreach($this->availableLanguages as $languageCode => $languageName)
                 {
-                    continue;
-                }
+                    $this->setLanguage($languageCode,$languageName);
+                    $this->_addDocumentMetaData();
+                    $this->_addDocumentFavouriteRank();
+                    $this->_addDocumentHeaderImage();
+                    $this->_addDocumentTitles();
+                    $this->_addDocumentDefinitionsBlock();
+                    $this->_addDocumentIUCN();
+                    $this->_addDocumentContent();
+                    $this->_addDocumentObjects();
+                    $this->_addDocumentLinks();
+                    $this->_addDocumentDistributionMap();
+                    $this->_addDocumentReciprocalLinkText();
 
-                $filename = $this->_generateUniqueFilename( $this->jsonPath["preview"], $this->rawDocData["taxon"] );
+                    if (!$this->_checkMinimumRequirements())
+                    {
+                        continue;
+                    }
 
-                if (file_put_contents($filename, json_encode($this->document)))
-                {
-                    // $this->log(sprintf("wrote %s",$filename),self::DATA_MESSAGE,"generator");
-                    $wrote++;
-                }
-                else
-                {
-                    $this->log(sprintf("could not write %s",$filename),self::DATA_ERROR,"generator");
-                }
+                    $filename = $this->_generateUniqueFilename( $this->jsonPath["preview"], $this->rawDocData["taxon"] );
 
-                $this->document=[];
+                    if (file_put_contents($filename, json_encode($this->document)))
+                    {
+                        // $this->log(sprintf("wrote %s",$filename),self::DATA_MESSAGE,"generator");
+                        $wrote++;
+                    }
+                    else
+                    {
+                        $this->log(sprintf("could not write %s",$filename),self::DATA_ERROR,"generator");
+                    }
+
+                    $this->document=[];
+                }
             }
 
             $this->log(sprintf("wrote %s files",$wrote),self::DATA_MESSAGE,"generator");
@@ -1908,7 +1915,8 @@
                 else
                 if (isset($this->rawDocData["image_square"]["filename"]))
                 {
-                    $this->document[$block_name] = [ "url" => $this->squaredImageURLRoot . $this->rawDocData["image_square"]["filename"] ];
+                    $this->document[$block_name] =
+                        [ "url" => $this->squaredImageURLRoot . $this->rawDocData["image_square"]["filename"] ];
                 }
             }
         }
@@ -1930,7 +1938,6 @@
                        return strtoupper($digraph) . substr($name, strlen($digraph));
                     }
                 }
-
                 return ucfirst($name);
             }
         }
@@ -1945,11 +1952,12 @@
                         $this->rawDocData["taxonomy"]["_nomen"] : 
                         $this->rawDocData["taxon"];
 
-                $dutchName  = $this->rawDocData["taxonomy"]["dutch"] ?? null;;
+                // $dutchName  = $this->rawDocData["taxonomy"]["dutch"] ?? null;;
+                $commonName  = $this->rawDocData["taxonomy"][$this->languageName] ?? null;;
 
-                $this->document[$block_name]["page"] = $dutchName ?? $sciName;
-                $this->document[$block_name]["main"] = $dutchName ?? $sciName;
-                $this->document[$block_name]["sub"] = is_null($dutchName) ? "" : $sciName;
+                $this->document[$block_name]["page"] = $commonName ?? $sciName;
+                $this->document[$block_name]["main"] = $commonName ?? $sciName;
+                $this->document[$block_name]["sub"] = is_null($commonName) ? "" : $sciName;
 
                 if ($this->document[$block_name]["main"]==$this->document[$block_name]["sub"])
                 {
@@ -1973,18 +1981,44 @@
 
             $this->document[$block_name]=[];
 
-            $this->document[$block_name]["items"][]=
-                [ "label" => "Wetenschappelijke naam",
-                  "text" =>
-                    isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["_nomen"]) ? 
-                        $this->rawDocData["taxonomy"]["_nomen"] : 
-                        $this->rawDocData["taxon"]
-                ];
+            $scientificNameDisplay = 
+                isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["_nomen"]) ?
+                    $this->rawDocData["taxonomy"]["_nomen"] : 
+                    $this->rawDocData["taxon"];
+
+            /*
+                if the scientific name is identical to either the dutch or the english one,
+                don't show the scientitfic name (to avoid repetition, for instanc in in the 
+                case of aardolie, aardolie, petroleum)
+            */
+            if (
+                !(
+                    (
+                        isset($this->rawDocData["taxonomy"]) && 
+                        isset($this->rawDocData["taxonomy"]["dutch"]) && 
+                        $this->rawDocData["taxonomy"]["dutch"] == $scientificNameDisplay
+                    )
+                    ||
+                    (
+                        isset($this->rawDocData["taxonomy"]) && 
+                        isset($this->rawDocData["taxonomy"]["english"]) &&
+                        $this->rawDocData["taxonomy"]["english"] == $scientificNameDisplay
+                    )
+                )
+            )
+            {
+                $this->document[$block_name]["items"][]=
+                    [ "label" => $this->translate("Wetenschappelijke naam"),
+                      "order_label" => "wetenschappelijke_naam",
+                      "text" =>$scientificNameDisplay
+                    ];
+            }
 
             if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["dutch"]))
             {
                 $this->document[$block_name]["items"][]=
-                    [ "label" => "Nederlandse naam",
+                    [ "label" => $this->translate("Nederlandse naam"),
+                      "order_label" => "nederlandse_naam",
                       "text" => $this->rawDocData["taxonomy"]["dutch"]
                     ];
             }
@@ -1992,22 +2026,35 @@
             if (isset($this->rawDocData["taxonomy"]) && isset($this->rawDocData["taxonomy"]["english"]))
             {
                 $this->document[$block_name]["items"][]=
-                    [ "label" => "Engelse naam",
+                    [ "label" => $this->translate("Engelse naam"),
+                      "order_label" => "engelse_naam",
                       "text" => $this->rawDocData["taxonomy"]["english"]
                     ];
             }
 
             if (isset($this->rawDocData["texts"]) && isset($this->rawDocData["texts"]["ttik"]))
             {
-                foreach ($this->rawDocData["texts"]["ttik"] as $key => $val)
+                foreach ($this->rawDocData["texts"]["ttik"] as $tKey => $translation)
                 {
-                    if ($val["title"]=="Leefgebied" || $val["title"]=="Leefperiode")
+                    if (isset($translation["description"]) && $translation["language_code"]==$this->language)
                     {
-                        $this->document[$block_name]["items"][]=
-                            [ "label" => ($val["title"]=="Leefgebied" ? "Waar" : "Wanneer"),
-                              "text" => $this->_reformatFormatting($val["body"])
-                            ];
+                        foreach ($translation["description"] as $key => $val)
+                        {
+                            if (
+                                $val["title"]==$this->ttikCategoryNames["where"] || 
+                                $val["title"]==$this->ttikCategoryNames["when"]
+                            )
+                            {
+                                $this->document[$block_name]["items"][] = 
+                                [
+                                    "label" => $this->translate($val["title"]==$this->ttikCategoryNames["where"] ? "Waar" : "Wanneer"),
+                                    "order_label" => ($val["title"]==$this->ttikCategoryNames["where"] ? "waar" : "wanneer"),
+                                    "text" => $this->_reformatFormatting($val["body"])
+                                ];
+                            }
+                        }
                     }
+
                 }
             }
 
@@ -2015,6 +2062,7 @@
             // {
             //     $this->document[$block_name]["items"][]=
             //         [ "label" => count($this->rawDocData["taxonomy"]["synonyms"])>1 ? "Synoniemen" : "Synoniem",
+            //           "order_label" => "synoniemen",
             //           "text" => implode("; ",$this->rawDocData["taxonomy"]["synonyms"])
             //         ];
             // }
@@ -2022,7 +2070,8 @@
             if (isset($this->rawDocData["taxonomy"]) && !empty($this->rawDocData["taxonomy"]["alternative_names"]))
             {
                 $this->document[$block_name]["items"][]=
-                    [ "label" => "Ook bekend als",
+                    [ "label" => $this->translate("Ook bekend als"),
+                      "order_label" => "ook_bekend_als",
                       "text" => implode("; ",array_map(function($a)
                         {
                             return sprintf("%s (%s)",$a["name"],$this->translate($a["language"]));
@@ -2030,53 +2079,77 @@
                     ];
             }
 
-
             usort($this->document[$block_name]["items"],function($a,$b)
             {
                 $order=[
-                    "Wetenschappelijke naam"=>0,
-                    "Nederlandse naam"=>1,
-                    "Engelse naam"=>2,
-                    "Synoniem"=>3,
-                    "Synoniemen"=>3,
-                    "Ook bekend als"=>4,
-                    "Waar"=>5,
-                    "Wanneer"=>6
+                    "wetenschappelijke_naam" => 0,
+                    "nederlandse_naam" =>  ($this->language=='nl' ? 1 : 2),
+                    "engelse_naam" => ($this->language=='nl' ? 2 : 1),
+                    "synoniemen" => 3,
+                    "ook_bekend_als" => 4,
+                    "waar" => 5,
+                    "wanneer" => 6
                 ];
 
-                $a = $order[$a["label"]];
-                $b = $order[$b["label"]];
+                $a = $order[$a["order_label"]];
+                $b = $order[$b["order_label"]];
                 return (($a == $b) ? 0 : (($a < $b) ? -1 : 1));
             });
+
+            $this->document[$block_name]["items"] = array_map(function($a)
+            { 
+                unset($a["order_label"]);
+                $a["text"]=trim($a["text"]);
+                return $a;
+            },
+            $this->document[$block_name]["items"]);
         }
 
         private function _addDocumentContent()
         {
+
             $block_name="content";
 
             unset($this->document[$block_name]);
 
             if (isset($this->rawDocData["texts"]) && isset($this->rawDocData["texts"]["ttik"]))
             {
-                $t=[];
-                foreach ($this->rawDocData["texts"]["ttik"] as $key => $val)
+
+                $ttik_texts = array_filter($this->rawDocData["texts"]["ttik"],
+                function($a)
                 {
-                    if ($val["title"]!="Leefgebied" && $val["title"]!="Leefperiode")
+                    return $a["language_code"]==$this->language;
+                });
+
+                $t=[];
+                // foreach ($this->rawDocData["texts"]["ttik"] as $key => $val)
+                foreach ($ttik_texts as $key => $val)
+                {
+                    foreach ($val["description"] as $dKey => $dVal)
                     {
-                        if (isset($val["title"]) && $val["title"]!="Beschrijving")
-                        {                                
-                            $t[] = [ "type" => "h1", "text" => $val["title"] ]; 
+                        if (
+                            $dVal["title"]!=$this->ttikCategoryNames["where"] && 
+                            $dVal["title"]!=$this->ttikCategoryNames["when"])
+                        {
+                            if (isset($dVal["title"]) && $dVal["title"]!=$this->ttikCategoryNames["description"])
+                            {                                
+                                $t[] = [ "type" => "h1", "text" => $dVal["title"] ]; 
+                            }
+                            if (isset($dVal["body"]))
+                            {                                
+                                $t[] = [
+                                    "type" => "paragraph",
+                                    "text" => trim($this->_reformatFormatting($dVal["body"])),
+                                    "_title" => $dVal["title"]
+                                ];
+                            }
                         }
-                        if (isset($val["body"]))
-                        {                                
-                            $t[] = [ "type" => "paragraph", "text" => $val["body"], "_title" => $val["title"] ];
-                        }
-                    }                        
+                    }                 
                 }
 
                 uasort($t,function($a,$b)
                 {
-                    if ($a["_title"]=="Beschrijving")
+                    if ($a["_title"]==$this->ttikCategoryNames["description"])
                     {
                         return -1;
                     }              
@@ -2096,6 +2169,18 @@
                     }
                    $a=$b;
                 });
+
+                if (isset($this->autoTranslationTexts[$this->language]))
+                {
+                    foreach(array_reverse($t,true) as $key => $val)
+                    {
+                        if ($val["type"]=="paragraph")
+                        {
+                            $t[$key]["text"] .= "\n\n" . $this->autoTranslationTexts[$this->language];
+                            break;
+                        }
+                    }
+                }
 
                 $this->document[$block_name]=$t;
             }
@@ -2145,11 +2230,11 @@
                     $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
                     $room =  $this->exhibitionRoomsPublic[$room] ?? $room;
 
-                    $o["location"]=$room;
+                    $o["location"] = $this->translate($room);
 
                     $o["data"] = [
-                        [ "label" => "Registratienummer", "text" => $object["unitid"] ],
-                        [ "label" => "Museumzaal", "text" => $room ]
+                        [ "label" => $this->translate("Registratienummer"), "text" => $object["unitid"] ],
+                        [ "label" => $this->translate("Museumzaal"), "text" => $this->translate($room) ]
                     ];
 
                     $key = array_search($object["unitid"], array_column((array)$this->NBA, 'unitid'));
@@ -2160,7 +2245,11 @@
                         $o["data"] = array_merge($o["data"],$nbaData);
                         if (count($nbaData)>$this->maxNbaFields["fields"])
                         {
-                            $this->maxNbaFields=[ "taxon" => $this->rawDocData["taxon"], "unitid" => $object["unitid"], "fields" => count($nbaData) ];
+                            $this->maxNbaFields = [
+                                "taxon" => $this->rawDocData["taxon"], 
+                                "unitid" => $object["unitid"], 
+                                "fields" => count($nbaData)
+                            ];
                         }
                     }
 
@@ -2171,7 +2260,7 @@
                         $o["data"] = array_merge(
                             $o["data"],
                             [[
-                                "label" => "Dit object is een bruikleen van",
+                                "label" => $this->translate("Dit object is een bruikleen van"),
                                 "text" =>  $this->leenobjecten[$key]["geleend_van"]
                             ]]
                         );
@@ -2193,7 +2282,8 @@
                                     "url" => $topstuk["_full_url"],
                                     "text" => $this->_conjureUpTopstukLinkText(
                                         $topstuk["title"],
-                                        $this->rawDocData["taxonomy"]["dutch"] ?? $this->rawDocData["taxon"]
+                                        // $this->rawDocData["taxonomy"]["dutch"] ?? $this->rawDocData["taxon"]
+                                        $this->rawDocData["taxonomy"][$this->languageName] ?? $this->rawDocData["taxon"]
                                     )
                                 ];
 
@@ -2284,12 +2374,15 @@
             if (isset($this->rawDocData["IUCN"]))
             {
                 $this->document[$block_name]= [
-                    "name" => $this->rawDocData["IUCN"]["name"],
+                    "name" => $this->translate($this->rawDocData["IUCN"]["name"]) . $this->rawDocData["IUCN"]["name_addendum"],
                     "category" => $this->rawDocData["IUCN"]["category"],
-                    "label" => $this->rawDocData["IUCN"]["category_label"],
+                    "label" => $this->translate($this->rawDocData["IUCN"]["category_label"]),
                     // "url_link" => $this->iucnURLs["general_link"],
-                    // "url_label" => $this->iucnURLs["general_link_label"],
-                    "credit" => sprintf("Bron: IUCN (beoordelingsdatum: %s)",$this->rawDocData["IUCN"]["assessment_date"])
+                    // "url_label" => $this->translate($this->iucnURLs["general_link_label"]),
+                    "credit" => sprintf(
+                        $this->translate("Bron: IUCN (beoordelingsdatum: %s)"),
+                        $this->rawDocData["IUCN"]["assessment_date"]
+                    )
                 ];
             }
         }
@@ -2334,7 +2427,7 @@
                         $this->rawDocData["taxon"];
             }
             
-            $this->document[$block_name] = sprintf("Lees meer over %s",$name);
+            $this->document[$block_name] = sprintf($this->translate("Lees meer over %s"),$name);
         }
 
         private function _addDocumentFavouriteRank()
@@ -2398,7 +2491,7 @@
                     "_",
                     preg_replace('/[[:^print:]]/', '', $name)));
 
-            return $path . $filename_base . "." . $ext;              
+            return $path . $filename_base . "-" . $this->language . "." . $ext;              
         }
 
         private function _distillNBAData( $document )
@@ -2444,10 +2537,9 @@
                 $vindplaats = $str1 . ", " . $str2;
             }
 
-            // $vindplaats = $str1 . " ||| " . $str2 . "||| (" . $pct . "): " . $vindplaats;
-
             $d[] = [
-                "label" => "Vindplaats",
+                "label" => $this->translate("Vindplaats"),
+                "order_label" => "vindplaats",
                 "text" =>  $vindplaats
             ];
 
@@ -2460,7 +2552,8 @@
                 }
 
                 $d[] = [
-                    "label" => "Verzamelaar(s)",
+                    "label" => $this->translate("Verzamelaar(s)"),
+                    "order_label" => "verzamelaars",
                     "text" =>  implode("; ", $p)
                 ];
             }
@@ -2468,7 +2561,8 @@
             if (isset($event["dateTimeBegin"]))
             {
                 $d[] = [
-                    "label" => "Verzameld",
+                    "label" => $this->translate("Verzameld"),
+                    "order_label" => "verzameld",
                     "text" =>  (isset($event["dateTimeBegin"]) ? 
                         date("d-m-Y", strtotime($event["dateTimeBegin"])) :
                         (isset($event["dateText"]) ? $event["dateText"] : "" ))
@@ -2476,33 +2570,39 @@
             }
 
             $d[] = [
-                "label" => "Expeditie",
+                "label" => $this->translate("Expeditie"),
+                "order_label" => "expeditie",
                 "text" => $event["projectTitle"]
             ];
 
             $d[] = [
-                "label" => "Verzamelmethode",
+                "label" => $this->translate("Verzamelmethode"),
+                "order_label" => "verzamelmethode",
                 "text" => $event["method"]
             ];
 
             $d[] = [
-                "label" => "Verzameld op hoogte",
+                "label" => $this->translate("Verzameld op hoogte"),
+                "order_label" => "verzameld_op_hoogte",
                 "text" => $event["altitude"]
             ];
 
             $d[] = [
-                "label" => "Verzameld op diepte",
+                "label" => $this->translate("Verzameld op diepte"),
+                "order_label" => "verzameld_op_diepte",
                 "text" => $event["depth"]
             ];    
     
 
             $d[] = [
-                "label" => "Verzameld in biotoop",
+                "label" => $this->translate("Verzameld in biotoop"),
+                "order_label" => "verzameld_in_biotoop",
                 "text" => @$event["biotopeText"]
             ];
 
             $d[] = [
-                "label" => "Type object",
+                "label" => $this->translate("Type object"),
+                "order_label" => "type_object",
                 "text" =>  trim(
                     implode("; ",
                         array_filter(
@@ -2519,27 +2619,32 @@
             ];
 
             $d[] = [
-                "label" => "Aantal",
+                "label" => $this->translate("Aantal"),
+                "order_label" => "aantal",
                 "text" =>  isset($document["numberOfSpecimen"]) && $document["numberOfSpecimen"] > 1 ? strval($document["numberOfSpecimen"]) : null
             ];
 
             $d[] = [
-                "label" => "Sekse",
+                "label" => $this->translate("Sekse"),
+                "order_label" => "sekse",
                 "text" =>  @$document["sex"]
             ];
 
             $d[] = [
-                "label" => "Collectienaam",
+                "label" => $this->translate("Collectienaam"),
+                "order_label" => "collectienaam",
                 "text" =>  @$document["collectionType"]
             ];
 
             $d[] = [
-                "label" => "Levensfase",
+                "label" => $this->translate("Levensfase"),
+                "order_label" => "levensfase",
                 "text" =>  @$document["phaseOrStage"]
             ];
 
             $d[] = [
-                "label" => "Lithostratigrafische formatie",
+                "label" => $this->translate("Lithostratigrafische formatie"),
+                "order_label" => "lithostratigrafische_formatie",
                 "text" =>  @$event["lithoStratigraphy"]["formation"]
             ];
 
@@ -2569,17 +2674,20 @@
                 }
 
                 $d[] = [
-                    "label" => "Typestatus",
+                    "label" => $this->translate("Typestatus"),
+                    "order_label" => "typestatus",
                     "text" =>  $typeStatus
                 ];
 
                 $d[] = [
-                    "label" => "Steentype",
+                    "label" => $this->translate("Steentype"),
+                    "order_label" => "steentype",
                     "text" =>  $rockType
                 ];
 
                 $d[] = [
-                    "label" => "Geassocieerd mineraal",
+                    "label" => $this->translate("Geassocieerd mineraal"),
+                    "order_label" => "geassocieerd_mineraal",
                     "text" =>  $associatedMineralName
                 ];
             }
@@ -2589,23 +2697,30 @@
             uasort($d,function($a,$b)
             {
                 $order=[
-                    "Vindplaats"=>0,
-                    "Verzamelaar(s)"=>1,
-                    "Verzameld"=>2,
-                    "Sekse"=>3,
-                    "Levensfase"=>4,
-                    "Steentype"=>5,
-                    "Geassocieerd mineraal"=>6,
-                    "Type object"=>7,
-                    "Typestatus"=>9,
-                    "Collectienaam"=>10,
-                    "Aantal"=>8,
+                    "vindplaats"=>0,
+                    "verzamelaar(s)"=>1,
+                    "verzameld"=>2,
+                    "sekse"=>3,
+                    "levensfase"=>4,
+                    "steentype"=>5,
+                    "geassocieerd_mineraal"=>6,
+                    "type_object"=>7,
+                    "typestatus"=>9,
+                    "collectienaam"=>10,
+                    "aantal"=>8,
                 ];
 
-                $a = $order[$a["label"]] ?? 99;
-                $b = $order[$b["label"]] ?? 99;
+                $a = $order[$a["order_label"]] ?? 99;
+                $b = $order[$b["order_label"]] ?? 99;
                 return (($a == $b) ? 0 : (($a < $b) ? -1 : 1));
             });
+
+            $d = array_map(function($a)
+            { 
+                unset($a["order_label"]);
+                return $a;
+            },
+            $d);
 
             return $d;
         }
@@ -2622,14 +2737,18 @@
 
         private function _reformatFormatting( $content )
         {
-            return str_replace(['<em>','</em>','<strong>','</strong>'], ['<i>','</i>','<b>','</b>'], strip_tags($content,'<strong><b><em><i><u>'));
+            return str_replace(
+                ['<em>','</em>','<strong>','</strong>'], 
+                ['<i>','</i>','<b>','</b>'], 
+                strip_tags($content,'<strong><b><em><i><u>')
+            );
         }
 
         private function _conjureUpTopstukLinkText( $topstuk_title, $species_name )
         {
             similar_text(strtolower($topstuk_title),strtolower($species_name),$pct);
 
-            $generic = "Het verhaal achter dit topstuk";
+            $generic = $this->translate("Het verhaal achter dit topstuk");
 
             if ($pct>80)
             {
@@ -2692,7 +2811,6 @@
             $db->exec( 'COMMIT;' );
         }
 
-
         private function _storeStatistics()
         {
             $per_room=[];
@@ -2715,7 +2833,7 @@
 
                 foreach ((array)$val["texts"]["ttik"] as $key => $tVal)
                 {
-                    if (isset($tVal["title"]) && $tVal["title"]=="Beschrijving")
+                    if (isset($tVal["title"]) && $tVal["title"]==$this->ttikCategoryNames["description"])
                     {                                
                         $have_description=true;
                     }
@@ -2834,7 +2952,6 @@
             $sql->bindValue(3, $per_taxon["with_description"] ?? 0);
             $sql->bindValue(4, $per_taxon["with_image_and_description"] ?? 0);
             $sql->execute();
-
         }
 
         private function _checkMinimumRequirements()

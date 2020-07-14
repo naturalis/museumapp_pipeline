@@ -10,7 +10,78 @@
         public $language;
         public $languageDefault="nl";
         private $messages=[];
-        private $translations = [ "nl" => [ "english" => "Engels", "dutch" => "Nederlands" ] ];
+        private $translations =
+            [
+                "nl" =>
+                    [ 
+                        "english" => "Engels",
+                        "dutch" => "Nederlands",
+                    ],
+                "en" =>
+                    [
+                        // algemeen
+                        "Wetenschappelijke naam" => "Scientific name",
+                        "Ook bekend als" => "also known as",
+                        "Nederlandse naam" => "Dutch name",
+                        "Engelse naam" => "English name",
+                        "Registratienummer" => "Registration number",
+                        "Museumzaal" => "Gallery",
+                        "Lees meer over %s" => "Read more about %s",
+                        "Waar" => "Where",
+                        "Wanneer" => "When",
+                        "english" => "English",
+                        "dutch" => "Dutch",
+
+                        // objecten
+                        "Dit object is een bruikleen van" => "This object is on loan from",
+                        "Het verhaal achter dit topstuk" => "The story behind this highlight",
+
+                        // nba velden
+                        "Vindplaats" => "Site",
+                        "Verzamelaar(s)" => "Collector(s)",
+                        "Verzameld" => "Collected",
+                        "Expeditie" => "Expedition",
+                        "Verzamelmethode" => "Collection method",
+                        "Verzameld op hoogte" => "Collected at height",
+                        "Verzameld op diepte" => "Collected at depth",
+                        "Verzameld in biotoop" => "Collected in biotope",
+                        "Type object" => "Object type",
+                        "Aantal" => "Number",
+                        "Sekse" => "Sex",
+                        "Collectienaam" => "Collection name",
+                        "Levensfase" => "Life stage",
+                        "Lithostratigrafische formatie" => "Lithostratigraphic formation",
+                        "Typestatus" => "Type status",
+                        "Steentype" => "Stone type",
+                        "Geassocieerd mineraal" => "Associated mineral",
+
+                        // IUCN
+                        "Lees meer over de beschermingsstatus" => "Read more about the protection status",
+                        "Beschermingsstatus" => "Conservation status",
+                        "Bron: IUCN (beoordelingsdatum: %s)" => "Source: IUCN (assessment date: %s)",
+                        "Uitgestorven" => "Extinct",
+                        "Uitgestorven in het wild" => "Extinct in the wild",
+                        "Ernstig bedreigd (kritiek)" => "Critically endangered",
+                        "Bedreigd" => "Endangered",
+                        "Kwetsbaar" => "Vulnerable",
+                        "Gevoelig" => "Near threatened",
+                        "Van bescherming afhankelijk" => "Conservation dependent",
+                        "Niet bedreigd (veilig)" => "Least concern",
+                        "Onzeker" => "Data deficient",
+                        "Niet geëvalueerd" => "Not evaluated",
+                        "Niet van toepassing" => "Not applicable",
+
+                        // museumzalen
+                        "De dood" => "Death",
+                        "Dinotijd" => "Dinosaur era",
+                        "De vroege mens" => "Early humans",
+                        "De aarde" => "Earth",
+                        "De ijstijd" => "Ice age",
+                        "Leven" => "Life",
+                        "Live science" => "Live science",
+                        "De verleiding" => "Seduction",
+                    ]
+            ];
 
         const DATA_MESSAGE = 1;        
         const DATA_ERROR = 2;
@@ -142,7 +213,7 @@
 
         public function translate($txt)
         {
-            return  $this->translations[$this->language][$txt] ?? $txt;
+            return $this->translations[$this->language][$txt] ?? $txt;
         }
 
     }
