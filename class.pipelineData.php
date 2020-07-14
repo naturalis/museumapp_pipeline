@@ -2140,7 +2140,9 @@
                                 $t[] = [
                                     "type" => "paragraph",
                                     "text" => trim($this->_reformatFormatting($dVal["body"])),
-                                    "_title" => $dVal["title"]
+                                    "_title" => $dVal["title"],
+                                    "_verified" => $dVal["verified"]
+                                    
                                 ];
                             }
                         }
@@ -2156,6 +2158,21 @@
                     return (($a == $b) ? 0 : (($a < $b) ? -1 : 1));
                 });
 
+                if (isset($this->autoTranslationTexts[$this->language]))
+                {
+                    foreach(array_reverse($t,true) as $key => $val)
+                    {
+                        if ($val["type"]=="paragraph")
+                        {
+                            if ($val["_verified"]!="1")
+                            {
+                                $t[$key]["text"] .= "\n\n" . $this->autoTranslationTexts[$this->language];    
+                            }
+                            break;
+                        }
+                    }
+                }
+
                 array_walk($t,function(&$a)
                 {
                     $b=[];
@@ -2169,18 +2186,6 @@
                     }
                    $a=$b;
                 });
-
-                if (isset($this->autoTranslationTexts[$this->language]))
-                {
-                    foreach(array_reverse($t,true) as $key => $val)
-                    {
-                        if ($val["type"]=="paragraph")
-                        {
-                            $t[$key]["text"] .= "\n\n" . $this->autoTranslationTexts[$this->language];
-                            break;
-                        }
-                    }
-                }
 
                 $this->document[$block_name]=$t;
             }
