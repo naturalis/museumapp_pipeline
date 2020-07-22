@@ -2763,7 +2763,7 @@
             else
             {
                 // return sprintf("+ %s. %s (%s) %s", $topstuk_title, $generic, $pct, $species_name);
-                return sprintf("%s: %s", $topstuk_title, strtolower($generic));
+                return sprintf("%s: %s", $topstuk_title, lcfirst($generic));
             }
         }
 
