@@ -34,7 +34,7 @@
 
                         // objecten
                         "Dit object is een bruikleen van" => "This object is on loan from",
-                        "Het verhaal achter dit topstuk" => "The story behind this highlight",
+                        "Het verhaal achter dit topstuk" => "The story behind this highlight (in Dutch)",
 
                         // nba velden
                         "Vindplaats" => "Site",
