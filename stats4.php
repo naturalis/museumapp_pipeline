@@ -44,7 +44,7 @@
 
 <style>
 table.zaal tr td {
-    width: 200px;
+    width: 250px;
 }
 table tr.header td, table tr td.header {
     font-weight: bold;
