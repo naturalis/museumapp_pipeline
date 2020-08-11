@@ -1,4 +1,4 @@
-<?php
+    <?php
 
     $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
     $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
@@ -119,7 +119,8 @@ table tr.sum td {
     echo "<br />";
 
     echo "<table class='zaal2'>";
-    echo sprintf("<tr class='header'><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n","room","species","main img","descript","both");
+    echo sprintf("<tr class='header'><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n","zaal","soorten","hoofdafbeelding",
+        "beschrijving (nl)","beide");
 
     foreach ($taxa_per_room as $key => $val)
     {

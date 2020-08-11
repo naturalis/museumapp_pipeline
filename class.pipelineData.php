@@ -2838,9 +2838,15 @@
 
                 foreach ((array)$val["texts"]["ttik"] as $key => $tVal)
                 {
-                    if (isset($tVal["title"]) && $tVal["title"]==$this->ttikCategoryNames["description"])
-                    {                                
-                        $have_description=true;
+                    if ($tVal["language_code"]=="nl")
+                    {
+                        foreach ($tVal["description"] as $uKey => $uVal)
+                        {
+                            if (isset($uVal["title"]) && $uVal["title"]==$this->ttikCategoryNames["description"])
+                            {                                
+                                $have_description=true;
+                            }
+                        }
                     }
                 }
 
