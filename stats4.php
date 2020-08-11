@@ -44,7 +44,7 @@
 
 <style>
 table.zaal tr td {
-    width: 250px;
+    width: 200px;
 }
 table tr.header td, table tr td.header {
     font-weight: bold;
@@ -60,7 +60,7 @@ table tr.sum td {
     padding-top: 2px;
 }
 .zaal2 td:not(:first-child) {
-    width: 100px;
+    width: 150px;
 }
 </style>
 <body>
