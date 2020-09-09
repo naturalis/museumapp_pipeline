@@ -2232,8 +2232,8 @@
                         $potential_topstuk_image = [ "url" => $this->objectImagePlaceholderURL ];
                     }
 
-                    $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]];
-                    $room =  $this->exhibitionRoomsPublic[$room] ?? $room;
+                    $room = $this->exhibitionRoomsTranslations[$object["exhibition_room"]] ?? $object["exhibition_room"];
+                    $room = $this->exhibitionRoomsPublic[$room] ?? $room;
 
                     $o["location"] = $this->translate($room);
 
