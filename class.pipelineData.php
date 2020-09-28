@@ -230,8 +230,15 @@
                     // $a["_is_leenobject"] =
                     //     substr($a["Registratienummer"],0,strlen(self::PREFIX_LEENOBJECTEN))==self::PREFIX_LEENOBJECTEN;
 
-                    $prefix = @explode(".",$a["Registratienummer"])[0];
-
+                    if (strpos($a["Registratienummer"], "  ")>0)
+                    {
+                        $prefix = @explode("  ",$a["Registratienummer"])[0];
+                    }
+                    else
+                    {
+                        $prefix = @explode(".",$a["Registratienummer"])[0];
+                    }
+                   
                     $a["_is_brahms"] = !empty($prefix) && in_array($prefix, $this->brahmsPrefixes);
 
                     return $a;
@@ -1574,8 +1581,9 @@
                         else
                         {
                             $val["object_data"][$key]["images"] = null;
+                            // $this->log(sprintf("images of taxon %s, unitid %s skipped because object is not present in image selection",$val["taxon"],$object["unitid"]),self::DATA_ERROR,"IMAGES");
                         }
-                    }    
+                    }
                 }
 
                 $d[]=$val;

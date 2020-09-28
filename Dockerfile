@@ -3,7 +3,7 @@ MAINTAINER maarten.schermer@naturalis.nl
 
 RUN docker-php-ext-install mysqli && docker-php-ext-enable mysqli
 
-#RUN apt-get update && apt-get install -y vim
+RUN apt-get update && apt-get install -y vim
 
 COPY . /var/www/html/
 
