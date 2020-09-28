@@ -220,6 +220,59 @@
             }
         }
 
+        public function setIUCNstatusTranslations( $data_IUCN_statusTranslations )
+        {
+            if (!is_null($data_IUCN_statusTranslations))
+            {
+                $this->IUCN_statusTranslations = $data_IUCN_statusTranslations;
+            }
+        }
+
+        public function setExhibitionRoomsTranslations( $data_exhibitionRoomsTranslations )
+        {
+            if (!is_null($data_exhibitionRoomsTranslations))
+            {
+                $this->exhibitionRoomsTranslations = $data_exhibitionRoomsTranslations;
+            }
+        }
+
+        public function getExhibitionRoomsTranslations()
+        {
+            return $this->exhibitionRoomsTranslations;
+        }
+
+        public function setExhibitionRoomsPublic( $data_exhibitionRoomsPublic )
+        {
+            if (!is_null($data_exhibitionRoomsPublic))
+            {
+                $this->exhibitionRoomsPublic = $data_exhibitionRoomsPublic;
+            }
+        }
+
+        public function setRoomsToMatchLinksOn( $data_roomsToMatchLinksOn )
+        {
+            if (!is_null($data_roomsToMatchLinksOn))
+            {
+                $this->roomsToMatchLinksOn = $data_roomsToMatchLinksOn;
+            }
+        }
+
+        public function setBrahmsPrefixes( $data_brahmsPrefixes )
+        {
+            if (!is_null($data_brahmsPrefixes))
+            {
+                $this->brahmsPrefixes = $data_brahmsPrefixes;
+            }
+        }
+
+        public function setTtikCategoryNames( $data_ttikCategoryNames )
+        {
+            if (!is_null($data_ttikCategoryNames))
+            {
+                $this->ttikCategoryNames = $data_ttikCategoryNames;
+            }
+        }
+
         public function setMasterList()
         {
             $this->masterList = $this->getMySQLSource(self::TABLE_MASTER);

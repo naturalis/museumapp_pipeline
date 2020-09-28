@@ -1,4 +1,4 @@
-    <?php
+<?php
 
     $db["host"] = isset($_ENV["MYSQL_HOST"]) ? $_ENV["MYSQL_HOST"] : 'mysql';
     $db["user"] = isset($_ENV["MYSQL_USER"]) ? $_ENV["MYSQL_USER"] : 'root';
@@ -9,6 +9,8 @@
     $managementDataDbPath = 
         (isset($_ENV["MANAGEMENT_DATA_PATH"]) ? $_ENV["MANAGEMENT_DATA_PATH"] : null) .
         (isset($_ENV["MANAGEMENT_DATA_DB"]) ? $_ENV["MANAGEMENT_DATA_DB"] : null);
+    $data_exhibitionRoomsTranslations = 
+        isset($_ENV["DATA_GALLERIES_SHEET_TO_NATUURWIJZER"]) ? json_decode($_ENV["DATA_GALLERIES_SHEET_TO_NATUURWIJZER"],true) : null;
 
     include_once('auth.php');
     include_once('class.baseClass.php');
@@ -34,6 +36,8 @@
     $e->setSQLitePath( "squares", $imgSquaresDbPath );
     $e->setImageSquares();
     // $data3 = $e->getImageSquares();
+    $e->setExhibitionRoomsTranslations( $data_exhibitionRoomsTranslations );
+    $exhibitionRoomsTranslations = $e->getExhibitionRoomsTranslations();
 
 ?>
 <html>
@@ -46,6 +50,11 @@
 table.zaal tr td {
     width: 200px;
 }
+
+table.zaal tr td.zaal {
+    width: 330px;
+}
+
 table tr.header td, table tr td.header {
     font-weight: bold;
 }
@@ -81,10 +90,11 @@ table tr.sum td {
 
     foreach ($data1 as $key => $val)
     {
-        echo sprintf("<tr class='data'><td>%s</td><td>%s (%02d%%)</td><td>%s (% 2d%%)</td></tr>\n",
-            $val["zaal"],
+        echo sprintf("<tr class='data'><td class='zaal'>%s</td><td>%s (%02d%%)</td><td>%s (% 2d%%)</td></tr>\n",
+            ($exhibitionRoomsTranslations[$val["zaal"]] ?? $val["zaal"]),
+
             $val["unique_unitids_with_image_URL"],
-            
+
             round($val["unique_unitids_with_image_URL"] / ($val["unique_unitids_with_image_URL"]+$val["unique_unitids_without_image_URL"]) * 100),
 
             $val["unique_unitids_without_image_URL"],

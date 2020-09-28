@@ -71,8 +71,13 @@
                         "Niet geëvalueerd" => "Not evaluated",
                         "Niet van toepassing" => "Not applicable",
                         "Bron: %s" => "Source: %s",
+                    ]
+            ];
 
-                        // museumzalen
+        private $galleryTranslations =
+            [
+                "en" =>
+                    [
                         "De dood" => "Death",
                         "Dinotijd" => "Dinosaur era",
                         "De vroege mens" => "Early humans",
@@ -81,6 +86,7 @@
                         "Leven" => "Life",
                         "Live science" => "Live science",
                         "De verleiding" => "Seduction",
+                        "Wisselzaal" => "Temporary gallery"
                     ]
             ];
 
@@ -214,7 +220,22 @@
 
         public function translate($txt)
         {
-            return $this->translations[$this->language][$txt] ?? $txt;
+            if (isset($this->translations[$this->language][$txt]))
+            {
+                return $this->translations[$this->language][$txt];
+            }
+            else
+            {
+                return $this->galleryTranslations[$this->language][$txt] ?? $txt;
+            }
+        }
+
+        public function setGalleryTranslations( $language, $names )
+        {
+            if (!is_null($language) && !is_null($names))
+            {
+                $this->galleryTranslations[$language] = $names;
+            }
         }
 
     }

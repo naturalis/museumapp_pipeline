@@ -27,17 +27,29 @@
 
     $autoTranslationText_EN = isset($_ENV["AUTO_TRANSLATION_TEXT"]) ? $_ENV["AUTO_TRANSLATION_TEXT"] : null;
 
-    if (isset($_ENV["TEST_TAXA"]))
-    {
-        try {
-            $testTaxa = json_decode($_ENV["TEST_TAXA"]);
-        } catch (Exception $e) {
-            //
-        }
-    }
-    else
-    {
-        $testTaxa = null;
+    try {
+
+        $testTaxa =
+            isset($_ENV["TEST_TAXA"]) ? json_decode($_ENV["TEST_TAXA"],true) : null;
+        $data_IUCN_statusTranslations =
+            isset($_ENV["DATA_IUCN_STATUSTRANSLATIONS"]) ? json_decode($_ENV["DATA_IUCN_STATUSTRANSLATIONS"],true) : null;
+        $data_exhibitionRoomsTranslations = 
+            isset($_ENV["DATA_GALLERIES_SHEET_TO_NATUURWIJZER"]) ? json_decode($_ENV["DATA_GALLERIES_SHEET_TO_NATUURWIJZER"],true) : null;
+        $data_exhibitionRoomsPublic = 
+            isset($_ENV["DATA_GALLERIES_NATUURWIJZER_TO_LABEL"]) ? json_decode($_ENV["DATA_GALLERIES_NATUURWIJZER_TO_LABEL"],true) : null;
+        $data_roomsToMatchLinksOn = 
+            isset($_ENV["DATA_GALLERIES_TO_MATCH_LINKS_ON"]) ? json_decode($_ENV["DATA_GALLERIES_TO_MATCH_LINKS_ON"],true) : null;
+        $data_brahmsPrefixes = 
+            isset($_ENV["DATA_BRAHMS_PREFIXES"]) ? json_decode($_ENV["DATA_BRAHMS_PREFIXES"],true) : null;
+        $data_ttikCategoryNames= 
+            isset($_ENV["DATA_TTIK_CATEGORY_TO_LABEL"]) ? json_decode($_ENV["DATA_TTIK_CATEGORY_TO_LABEL"],true) : null;
+        $data_galleriesEnglishNames = 
+            isset($_ENV["DATA_GALLERIES_ENGLISH_NAMES"]) ? json_decode($_ENV["DATA_GALLERIES_ENGLISH_NAMES"],true) : null;
+
+    } catch (Exception $e) {
+
+        print(sprintf("failed to load some config data: %s",$e->getMessage()));
+
     }
 
     include_once('auth.php');
@@ -64,6 +76,14 @@
     $d->setAutoTranslationText( 'en', $autoTranslationText_EN );
     // $d->setUseVerifiedTranslationsOnly( true );
     $d->setTestTaxa( $testTaxa );
+
+    $d->setIUCNstatusTranslations( $data_IUCN_statusTranslations );
+    $d->setExhibitionRoomsTranslations( $data_exhibitionRoomsTranslations );
+    $d->setExhibitionRoomsPublic( $data_exhibitionRoomsPublic );
+    $d->setRoomsToMatchLinksOn( $data_roomsToMatchLinksOn );
+    $d->setBrahmsPrefixes( $data_brahmsPrefixes );
+    $d->setTtikCategoryNames( $data_ttikCategoryNames );
+    $d->setGalleryTranslations( "en", $data_galleriesEnglishNames );
 
     $d->init();
 
