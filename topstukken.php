@@ -8,8 +8,6 @@
     include_once('auth.php');
     include_once('class.baseClass.php');
     include_once('class.pipelineData.php');
-    // include_once('class.dataBrowser.php');
-    // include_once('class.pipelineJobQueuer.php');
 
     $d = new PipelineData;
 
@@ -20,5 +18,5 @@
 
     if (!empty($topstukken["data"]))
     {
-        foreach ($topstukken as $val) echo $val["registrationNumber"],"\n";
+        foreach ($topstukken["data"] as $val) echo $val["registrationNumber"],"\n";
     }
