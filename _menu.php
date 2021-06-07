@@ -33,6 +33,7 @@ div.menu ul li {
         <li><b>API & endpoints</b></li>
         <li><a href="https://pipeline-museumapp.naturalis.nl/brahms.php" target="_blank">Brahms nummers</a></li>
         <li><a href="https://pipeline-museumapp.naturalis.nl/brahms_images.php" target="_blank">Brahms unitiID's/medialib URL's</a></li>
+        <li><a href="https://pipeline-museumapp.naturalis.nl/topstukken.php" target="_blank">Topstukken nummers</a></li>
         <li><a href="https://github.com/naturalis/museumapp_pipeline_api" target="_blank">MuseumApp API doc</a></li>
     </ul>
 </div>

@@ -21,7 +21,7 @@
                     [
                         // algemeen
                         "Wetenschappelijke naam" => "Scientific name",
-                        "Ook bekend als" => "also known as",
+                        "Ook bekend als" => "Also known as",
                         "Nederlandse naam" => "Dutch name",
                         "Engelse naam" => "English name",
                         "Registratienummer" => "Registration number",
